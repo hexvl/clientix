@@ -132,6 +132,8 @@ Note the #[body] macro on the post method argument - it’s required to map an o
 
 Future plans include expanding the argument macros to provide more flexible client configuration options.
 
+More examples can be found in the [examples](https://github.com/hexvl/clientix/blob/main/clientix-example/src/lib.rs) directory.
+
 ## Support & Contribution
 
 We’d be thrilled if you joined us in supporting and contributing to this project! Whether it’s reporting issues, suggesting improvements, or submitting pull requests, your help is always welcome. Together, we can make Clientix even better.

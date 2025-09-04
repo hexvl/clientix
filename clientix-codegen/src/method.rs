@@ -141,7 +141,7 @@ impl MethodConfig {
         let compiled_method = self.compile_method();
 
         quote! {
-            #sig {
+            pub #sig {
                 self.client
                     #compiled_method
                     .path(#method_path)

@@ -2,7 +2,7 @@ use crate::method::MethodConfig;
 
 use proc_macro::TokenStream;
 use quote::quote;
-use syn::{Ident, ItemTrait, TraitItem, LitStr, LitBool};
+use syn::{Ident, ItemTrait, TraitItem, LitStr, LitBool, Visibility};
 use syn::__private::{Span, TokenStream2};
 use syn::parse::Parser;
 
@@ -44,7 +44,7 @@ impl ClientConfig {
             .collect::<Vec<_>>();
 
         TokenStream2::from(quote! {
-            pub trait #client_interface_name {
+            trait #client_interface_name {
                 #(#client_interface_declarations_fn)*
             }
         })
@@ -54,11 +54,12 @@ impl ClientConfig {
         let client_url = self.get_url();
         let client_path = self.get_path();
         let client_struct_name = self.get_ident();
+        let client_visibility = self.get_vis();
         let client_builder_name = Ident::new(&format!("{}{}", self.get_ident(), "Builder"), Span::call_site());
         let client_type_method = if self.async_supported { quote! {asynchronous()} } else { quote! {blocking()} };
 
         TokenStream2::from(quote! {
-            pub struct #client_builder_name {
+            #client_visibility struct #client_builder_name {
                 clientix_builder: clientix::client::ClientixBuilder
             }
 
@@ -140,8 +141,8 @@ impl ClientConfig {
 
     fn compile_client(&self) -> TokenStream2 {
         let client_struct_name = self.get_ident();
+        let client_visibility = self.get_vis();
         let client_builder_name = Ident::new(&format!("{}{}", self.get_ident(), "Builder"), Span::call_site());
-        let client_interface_name = Ident::new(&format!("{}{}", self.get_ident(), "Interface"), Span::call_site());
 
         let client_type = TokenStream2::from(if self.async_supported {
             quote! {clientix::client::asynchronous::AsyncClient}
@@ -154,7 +155,7 @@ impl ClientConfig {
             .collect::<Vec<_>>();
 
         TokenStream2::from(quote! {
-            pub struct #client_struct_name {
+            #client_visibility struct #client_struct_name {
                 client: #client_type,
                 config: clientix::client::ClientConfig
             }
@@ -169,7 +170,7 @@ impl ClientConfig {
                 }
             }
 
-            impl #client_interface_name for #client_struct_name {
+            impl #client_struct_name {
                 #(#client_definitions)*
             }
         })
@@ -231,6 +232,10 @@ impl ClientConfig {
 
     fn get_ident(&self) -> Ident {
         self.item.clone().expect("missing client name").ident
+    }
+    
+    fn get_vis(&self) -> Visibility {
+        self.item.clone().expect("missing client name").vis
     }
 
     fn get_url(&self) -> String {
