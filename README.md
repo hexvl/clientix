@@ -16,10 +16,10 @@ cargo add clientix
 ```
 And if you prefer to declare it explicitly in your Cargo.toml, just add it under the [dependencies] section:
 ```
-clientix = "0.0.3"
+clientix = "0.0.4"
 ```
 
-## Examples
+# Examples
 
 This section shows a few examples. For more details, please refer to the documentation.
 
@@ -33,7 +33,7 @@ trait ExampleClient {
 
     #[get(path = "/objects", consumes = "application/json", produces = "application/json")]
     fn get(&self) -> ClientixResult<ClientixResponse<String>>;
-
+    
 }
 
 fn main() {
