@@ -28,6 +28,18 @@ impl AsyncClient {
     pub fn delete(&self) -> AsyncRequestBuilder {
         AsyncRequestBuilder::builder(self.clone(), Method::DELETE)
     }
+    
+    pub fn head(&self) -> AsyncRequestBuilder {
+        AsyncRequestBuilder::builder(self.clone(), Method::HEAD)
+    }
+    
+    pub fn options(&self) -> AsyncRequestBuilder {
+        AsyncRequestBuilder::builder(self.clone(), Method::OPTIONS)
+    }
+    
+    pub fn patch(&self) -> AsyncRequestBuilder {
+        AsyncRequestBuilder::builder(self.clone(), Method::PATCH)
+    }
 
 }
 

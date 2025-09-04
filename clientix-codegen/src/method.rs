@@ -1,18 +1,11 @@
 use proc_macro::TokenStream;
 use quote::{quote, ToTokens};
-use syn::{Attribute, FnArg, Ident, LitStr, Meta, Signature, TraitItemFn};
+use syn::{Attribute, FnArg, LitStr, Meta, Signature, TraitItemFn};
 use syn::__private::TokenStream2;
 use syn::parse::Parser;
 use clientix_core::core::headers::content_type::ContentType;
+use clientix_core::prelude::reqwest::Method;
 use crate::return_kind::ReturnKind;
-
-#[derive(Clone)]
-pub enum HttpMethod {
-    Get,
-    Post,
-    Put,
-    Delete
-}
 
 #[derive(Clone)]
 pub struct MethodArgumentsConfig {
@@ -27,37 +20,13 @@ pub struct MethodConfig {
     item: Option<TraitItemFn>,
     attributes: Vec<Attribute>,
     signature: Option<Signature>,
-    method: Option<HttpMethod>,
+    method: Option<Method>,
     path: Option<String>,
     consumes: ContentType,
     produces: ContentType,
     async_supported: bool,
     postprocessing: bool,
     arguments_config: MethodArgumentsConfig,
-}
-
-impl From<Ident> for HttpMethod {
-
-    fn from(value: Ident) -> Self {
-        match value {
-            ref ident if ident == "get" => {
-                HttpMethod::Get
-            },
-            ref ident if ident == "post" => {
-                HttpMethod::Post
-            }
-            ref ident if ident == "put" => {
-                HttpMethod::Put
-            }
-            ref ident if ident == "delete" => {
-                HttpMethod::Delete
-            }
-            _ => {
-                panic!("unexpected method");
-            }
-        }
-    }
-
 }
 
 impl From<TraitItemFn> for MethodConfig {
@@ -84,13 +53,20 @@ impl From<TraitItemFn> for MethodConfig {
         for attr_expr in method_attrs.attributes.clone().iter() {
             match &attr_expr.meta {
                 Meta::Path(value) => {
-                    let method: HttpMethod = value.get_ident().expect("unexpected ident").clone().into();
+                    let method: Method = value.get_ident()
+                        .map(|value| value.to_string().to_uppercase())
+                        .map(|value| value.as_str().try_into().expect(format!("invalid method: {value}").as_str()))
+                        .expect("unexpected ident");
 
                     method_attrs.parse_attrs(method.into(), TokenStream2::new());
                     method_attrs.parse_args(item.clone());
                 }
                 Meta::List(value) => {
-                    let method: HttpMethod = value.path.get_ident().expect("unexpected ident").clone().into();
+                    let method: Method = value.path.get_ident()
+                        .map(|value| value.to_string().to_uppercase())
+                        .map(|value| value.as_str().try_into().expect(format!("invalid method: {value}").as_str()))
+                        .expect("unexpected ident");
+                    
                     let attrs: TokenStream2 = value.tokens.to_token_stream();
 
                     method_attrs.parse_attrs(method.into(), attrs);
@@ -109,7 +85,7 @@ impl From<TraitItemFn> for MethodConfig {
 
 impl MethodConfig {
 
-    pub fn create(method: HttpMethod, item: TokenStream, attrs: TokenStream) -> Self {
+    pub fn create(method: Method, item: TokenStream, attrs: TokenStream) -> Self {
         let mut method_config = MethodConfig {
             item: None,
             attributes: vec![],
@@ -181,11 +157,14 @@ impl MethodConfig {
 
     fn compile_method(&self) -> TokenStream2 {
         TokenStream2::from(match self.method {
-            Some(HttpMethod::Get) => quote! {.get()},
-            Some(HttpMethod::Post) => quote! {.post()},
-            Some(HttpMethod::Put) => quote! {.put()},
-            Some(HttpMethod::Delete) => quote! {.delete()},
-            None => panic!("missing method type")
+            Some(Method::GET) => quote! {.get()},
+            Some(Method::POST) => quote! {.post()},
+            Some(Method::PUT) => quote! {.put()},
+            Some(Method::DELETE) => quote! {.delete()},
+            Some(Method::HEAD) => quote! {.head()},
+            Some(Method::OPTIONS) => quote! {.options()},
+            Some(Method::PATCH) => quote! {.patch()},
+            _ => panic!("missing method type")
         })
     }
 
@@ -409,7 +388,7 @@ impl MethodConfig {
         }
     }
 
-    fn parse(&mut self, method: HttpMethod, item: TokenStream2, attrs: TokenStream2) {
+    fn parse(&mut self, method: Method, item: TokenStream2, attrs: TokenStream2) {
         self.parse_item(item);
         self.parse_attrs(method, attrs);
     }
@@ -464,7 +443,7 @@ impl MethodConfig {
         self.signature = Some(item.sig);
     }
 
-    fn parse_attrs(&mut self, method: HttpMethod, attrs: TokenStream2) {
+    fn parse_attrs(&mut self, method: Method, attrs: TokenStream2) {
         let parser = syn::meta::parser(|meta| {
             match meta.path {
                 ref path if path.is_ident("path") => {
@@ -526,7 +505,7 @@ impl MethodConfig {
 
 }
 
-pub fn parse_method(method: HttpMethod, item: TokenStream, attrs: TokenStream) -> TokenStream {
+pub fn parse_method(method: Method, item: TokenStream, attrs: TokenStream) -> TokenStream {
     let method_config = MethodConfig::create(method, item, attrs);
 
     let compiled_declaration = method_config.compile_declaration();

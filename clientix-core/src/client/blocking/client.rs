@@ -29,6 +29,18 @@ impl BlockingClient {
         BlockingRequestBuilder::builder(self.clone(), Method::DELETE)
     }
 
+    pub fn head(&self) -> BlockingRequestBuilder {
+        BlockingRequestBuilder::builder(self.clone(), Method::HEAD)
+    }
+    
+    pub fn options(&self) -> BlockingRequestBuilder {
+        BlockingRequestBuilder::builder(self.clone(), Method::OPTIONS)
+    }
+    
+    pub fn patch(&self) -> BlockingRequestBuilder {
+        BlockingRequestBuilder::builder(self.clone(), Method::PATCH)
+    }
+    
 }
 
 impl From<ClientConfig> for BlockingClient {
