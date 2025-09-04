@@ -1,5 +1,5 @@
 [workspace]
-package = { version = "0.0.6", categories = ["HTTP client", "Procedural macro helpers"] }
+package = { version = "0.0.6", categories = ["web-programming", "web-programming::http-client", "development-tools::procedural-macro-helpers"] }
 members = ["clientix", "clientix-codegen", "clientix-core", "clientix-example"]
 resolver = "2"
 
