@@ -11,7 +11,7 @@ license = "MIT OR Apache-2.0"
 [dependencies]
 quote = "1.0.40"
 syn = { version = "2.0.106", features = ["full"] }
-clientix-core = { path = "../clientix-core", version = "0.0.1" }
+clientix-core = { path = "../clientix-core", version = "0.0.2" }
 
 [lib]
 proc-macro = true
