@@ -1,10 +1,10 @@
 # Clientix
 
-Clientix is a Rust library for building HTTP clients and requests declaratively with procedural macros — no need to write complex imperative or functional logic.
+Clientix is a Rust library for building HTTP clients and requests declaratively with procedural macros - no need to write complex imperative or functional logic.
 
 ## Description
 
-With a simple procedural macro placed above a trait and its methods, Clientix lets you implement HTTP clients easily and efficiently — supporting both async and blocking modes. This makes it flexible enough to fit a wide range of scenarios, depending on your needs.
+With a simple procedural macro placed above a trait and its methods, Clientix lets you implement HTTP clients easily and efficiently - supporting both async and blocking modes. This makes it flexible enough to fit a wide range of scenarios, depending on your needs.
 
 Currently, Clientix is built on top of reqwest with tokio as the async runtime. Future plans include adding support for other HTTP backends and giving you the ability to customize the underlying logic with minimal changes.
 
@@ -33,7 +33,7 @@ trait ExampleClient {
 
     #[get(path = "/objects", consumes = "application/json", produces = "application/json")]
     fn get(&self) -> ClientixResult<ClientixResponse<String>>;
-
+    
 }
 
 fn main() {
@@ -125,10 +125,10 @@ async fn main() {
 }
 ```
 
-Note the #[body] macro on the post method argument — it’s required to map an object to the request body. You also have the following argument macros available:
-- #[segment] — maps method arguments to path segments
-- #[query] — maps method arguments to query parameters
-- #[header] — maps method arguments to request headers
+Note the #[body] macro on the post method argument - it’s required to map an object to the request body. You also have the following argument macros available:
+- #[segment] - maps method arguments to path segments
+- #[query] - maps method arguments to query parameters
+- #[header] - maps method arguments to request headers
 
 Future plans include expanding the argument macros to provide more flexible client configuration options.
 
