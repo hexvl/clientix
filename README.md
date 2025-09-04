@@ -19,7 +19,7 @@ And if you prefer to declare it explicitly in your Cargo.toml, just add it under
 clientix = "0.0.4"
 ```
 
-# Examples
+## Examples
 
 This section shows a few examples. For more details, please refer to the documentation.
 
