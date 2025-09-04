@@ -1,3 +1,4 @@
 [workspace]
+package = { version = "0.0.2" }
 members = ["clientix", "clientix-codegen", "clientix-core", "clientix-example"]
 resolver = "2"
