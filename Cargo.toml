@@ -1,9 +1,9 @@
 [workspace]
-package = { version = "0.0.4" }
+package = { version = "0.0.5" }
 members = ["clientix", "clientix-codegen", "clientix-core", "clientix-example"]
 resolver = "2"
 
 [workspace.dependencies]
-clientix = { path = "clientix", version = "0.0.4" }
-clientix-core = { path = "clientix-core", version = "0.0.4" }
-clientix-codegen = { path = "clientix-codegen", version = "0.0.4" }
+clientix = { path = "clientix", version = "0.0.5" }
+clientix-core = { path = "clientix-core", version = "0.0.5" }
+clientix-codegen = { path = "clientix-codegen", version = "0.0.5" }
