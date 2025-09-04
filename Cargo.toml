@@ -1,5 +1,5 @@
 [workspace]
-package = { version = "0.0.5" }
+package = { version = "0.0.5", categories = ["HTTP client", "Procedural macro helpers"] }
 members = ["clientix", "clientix-codegen", "clientix-core", "clientix-example"]
 resolver = "2"
 

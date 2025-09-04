@@ -1,6 +1,8 @@
 [package]
-name = "clientix-example"
 version.workspace = true
+categories.workspace = true
+
+name = "clientix-example"
 edition = "2021"
 description = "Clientix is a Rust library for building HTTP clients and requests declaratively with procedural macros - no need to write complex imperative or functional logic."
 homepage = "https://github.com/hexvl/clientix"
