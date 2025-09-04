@@ -2,3 +2,7 @@
 package = { version = "0.0.2" }
 members = ["clientix", "clientix-codegen", "clientix-core", "clientix-example"]
 resolver = "2"
+
+[workspace.dependencies]
+clientix-core = { path = "clientix-core", version = "0.0.2" }
+clientix-codegen = { path = "clientix-codegen", version = "0.0.2" }
