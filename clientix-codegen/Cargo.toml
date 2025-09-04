@@ -1,0 +1,12 @@
+[package]
+name = "clientix-codegen"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+quote = "1.0.40"
+syn = { version = "2.0.106", features = ["full"] }
+clientix-core = { path = "../clientix-core" }
+
+[lib]
+proc-macro = true

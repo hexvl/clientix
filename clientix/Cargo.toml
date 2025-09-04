@@ -1,0 +1,8 @@
+[package]
+name = "clientix"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+clientix-core = { path = "../clientix-core" }
+clientix-codegen = { path = "../clientix-codegen" }
