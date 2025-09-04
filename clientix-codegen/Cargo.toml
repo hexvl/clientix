@@ -6,7 +6,7 @@ description = "The declarative HTTP-client"
 homepage = "https://github.com/hexvl/clientix"
 repository = "https://github.com/hexvl/clientix"
 readme = "../README.md"
-license-file = "../LICENSE"
+license = "MIT OR Apache-2.0"
 
 [dependencies]
 quote = "1.0.40"
