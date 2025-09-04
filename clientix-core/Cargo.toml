@@ -1,7 +1,12 @@
 [package]
 name = "clientix-core"
-version = "0.1.0"
+version = "0.0.1"
 edition = "2024"
+description = "The declarative HTTP-client"
+homepage = "https://github.com/hexvl/clientix"
+repository = "https://github.com/hexvl/clientix"
+readme = "../README.md"
+license-file = "../LICENSE"
 
 [dependencies]
 strfmt = "0.2.5"

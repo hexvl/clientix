@@ -1,9 +1,14 @@
 [package]
 name = "clientix-example"
-version = "0.1.0"
+version = "0.0.1"
 edition = "2021"
+description = "The declarative HTTP-client"
+homepage = "https://github.com/hexvl/clientix"
+repository = "https://github.com/hexvl/clientix"
+readme = "../README.md"
+license-file = "../LICENSE"
 
 [dependencies]
-clientix = { path = "../clientix" }
+clientix = { path = "../clientix", version = "0.0.1" }
 tokio = { version = "1.47.1", features = ["full"] }
 uuid = { version = "1.18.0", features = ["v4"] }
