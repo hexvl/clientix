@@ -16,7 +16,7 @@ cargo add clientix
 ```
 And if you prefer to declare it explicitly in your Cargo.toml, just add it under the [dependencies] section:
 ```
-clientix = "0.0.3"
+clientix = "0.0.4"
 ```
 
 # Examples
