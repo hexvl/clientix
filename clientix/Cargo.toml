@@ -9,5 +9,5 @@ readme = "../README.md"
 license = "MIT OR Apache-2.0"
 
 [dependencies]
-clientix-core = { path = "../clientix-core" }
-clientix-codegen = { path = "../clientix-codegen" }
+clientix-core = { path = "../clientix-core", workspace = true }
+clientix-codegen = { path = "../clientix-codegen", workspace = true }

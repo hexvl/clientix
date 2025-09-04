@@ -9,6 +9,6 @@ readme = "../README.md"
 license = "MIT OR Apache-2.0"
 
 [dependencies]
-clientix = { path = "../clientix" }
+clientix = { path = "../clientix", workspace = true }
 tokio = { version = "1.47.1", features = ["full"] }
 uuid = { version = "1.18.0", features = ["v4"] }
