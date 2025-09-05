@@ -55,6 +55,18 @@ impl From<serde_json::Error> for ClientixError {
     }
 }
 
+impl From<serde_xml_rs::Error> for ClientixError {
+    fn from(err: serde_xml_rs::Error) -> ClientixError {
+        ClientixError::IO(ClientixErrorData::new(), Some(Box::new(err)))
+    }
+}
+
+impl From<serde_urlencoded::de::Error> for ClientixError {
+    fn from(err: serde_urlencoded::de::Error) -> ClientixError {
+        ClientixError::IO(ClientixErrorData::new(), Some(Box::new(err)))
+    }
+}
+
 impl ClientixErrorData {
     pub fn new() -> ClientixErrorData {
         ClientixErrorData {

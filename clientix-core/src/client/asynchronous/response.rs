@@ -171,4 +171,38 @@ impl AsyncResponseHandler {
         }
     }
 
+    pub async fn xml<T>(self) -> ClientixResult<ClientixResponse<T>> where T: DeserializeOwned + Clone {
+        match self.result {
+            Ok(response) => {
+                Ok(ClientixResponse::new(
+                    response.version(),
+                    response.content_length(),
+                    response.status(),
+                    response.url().clone(),
+                    response.remote_addr(),
+                    response.headers().clone(),
+                    serde_xml_rs::from_str::<T>(response.text().await?.as_str())?
+                ))
+            },
+            Err(error) => Err(error),
+        }
+    }
+    
+    pub async fn urlencoded<T>(self) -> ClientixResult<ClientixResponse<T>> where T: DeserializeOwned + Clone {
+        match self.result {
+            Ok(response) => {
+                Ok(ClientixResponse::new(
+                    response.version(),
+                    response.content_length(),
+                    response.status(),
+                    response.url().clone(),
+                    response.remote_addr(),
+                    response.headers().clone(),
+                    serde_urlencoded::from_str::<T>(response.text().await?.as_str())?
+                ))
+            },
+            Err(error) => Err(error),
+        }
+    }
+    
 }
