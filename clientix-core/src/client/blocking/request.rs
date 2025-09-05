@@ -103,35 +103,43 @@ impl BlockingRequestBuilder {
 
     pub fn body<T: Serialize>(mut self, body: T, content_type: ContentType) -> Self {
         match content_type {
-            ContentType::ApplicationJson => {
-                match serde_json::to_string(&body) {
-                    Ok(body) => self.config.body = Some(body.into()),
-                    Err(err) => self.result = Err(ClientixError::IO(ClientixErrorData::new(), Some(err.into())))
-                }
-            }
-            ContentType::ApplicationXWwwFormUrlEncoded => {
-                match serde_urlencoded::to_string(&body) {
-                    Ok(body) => self.config.body = Some(body.into()),
-                    Err(err) => self.result = Err(ClientixError::IO(ClientixErrorData::new(), Some(err.into())))
-                }
-            },
+            ContentType::ApplicationJson => self.body_json(body),
+            ContentType::ApplicationXWwwFormUrlEncoded => self.body_form(body),
+            ContentType::ApplicationXml => self.body_xml(body),
             _ => {
                 let error_data = ClientixErrorData::builder().message(format!("invalid content type: {:?}", content_type).as_str()).build();
                 self.result = Err(ClientixError::InvalidRequest(error_data, None));
             }
         };
-        
-        match content_type.try_into() {
-            Ok(content_type) => {
-                self.config.headers.insert(CONTENT_TYPE, content_type);
-            },
-            Err(err) => {
-                let error_data = ClientixErrorData::builder().message(format!("invalid content type: {:?}. {:?}", content_type, err).as_str()).build();
-                self.result = Err(ClientixError::InvalidRequest(error_data, None));
-            }
-        }
 
         self
+    }
+
+    fn body_json<T: Serialize>(&mut self, body: T) {
+        match serde_json::to_string(&body) {
+            Ok(body) => self.config.body = Some(body.into()),
+            Err(err) => self.result = Err(ClientixError::InvalidRequest(ClientixErrorData::new(), Some(err.into())))
+        };
+
+        self.config.headers.insert(CONTENT_TYPE, ContentType::ApplicationJson.try_into().unwrap());
+    }
+
+    fn body_xml<T: Serialize>(&mut self, body: T) {
+        match serde_xml_rs::to_string(&body) {
+            Ok(body) => self.config.body = Some(body.into()),
+            Err(err) => self.result = Err(ClientixError::InvalidRequest(ClientixErrorData::new(), Some(err.into())))
+        };
+
+        self.config.headers.insert(CONTENT_TYPE, ContentType::ApplicationXml.try_into().unwrap());
+    }
+
+    fn body_form<T: Serialize>(&mut self, body: T) {
+        match serde_urlencoded::to_string(&body) {
+            Ok(body) => self.config.body = Some(body.into()),
+            Err(err) => self.result = Err(ClientixError::InvalidRequest(ClientixErrorData::new(), Some(err.into())))
+        };
+
+        self.config.headers.insert(CONTENT_TYPE, ContentType::ApplicationXWwwFormUrlEncoded.try_into().unwrap());
     }
 
     pub fn send(self) -> BlockingResponseHandler {
