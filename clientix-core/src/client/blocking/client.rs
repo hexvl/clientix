@@ -1,7 +1,7 @@
 use std::sync::{Arc, Mutex};
 use http::Method;
 use reqwest::blocking::Client as ReqwestClient;
-use crate::client::blocking::request::BlockingRequestBuilder;
+use crate::client::blocking::request::BlockingRequest;
 use crate::client::ClientConfig;
 
 #[derive(Clone)]
@@ -13,28 +13,28 @@ pub struct BlockingClient {
 
 impl BlockingClient {
 
-    pub fn get(&self) -> BlockingRequestBuilder {
-        BlockingRequestBuilder::builder(self.clone(), Method::GET)
+    pub fn get(&self) -> BlockingRequest {
+        BlockingRequest::builder(self.clone(), Method::GET)
     }
 
-    pub fn post(&self) -> BlockingRequestBuilder {
-        BlockingRequestBuilder::builder(self.clone(), Method::POST)
+    pub fn post(&self) -> BlockingRequest {
+        BlockingRequest::builder(self.clone(), Method::POST)
     }
 
-    pub fn put(&self) -> BlockingRequestBuilder {
-        BlockingRequestBuilder::builder(self.clone(), Method::PUT)
+    pub fn put(&self) -> BlockingRequest {
+        BlockingRequest::builder(self.clone(), Method::PUT)
     }
 
-    pub fn delete(&self) -> BlockingRequestBuilder {
-        BlockingRequestBuilder::builder(self.clone(), Method::DELETE)
+    pub fn delete(&self) -> BlockingRequest {
+        BlockingRequest::builder(self.clone(), Method::DELETE)
     }
 
-    pub fn head(&self) -> BlockingRequestBuilder {
-        BlockingRequestBuilder::builder(self.clone(), Method::HEAD)
+    pub fn head(&self) -> BlockingRequest {
+        BlockingRequest::builder(self.clone(), Method::HEAD)
     }
     
-    pub fn patch(&self) -> BlockingRequestBuilder {
-        BlockingRequestBuilder::builder(self.clone(), Method::PATCH)
+    pub fn patch(&self) -> BlockingRequest {
+        BlockingRequest::builder(self.clone(), Method::PATCH)
     }
     
 }

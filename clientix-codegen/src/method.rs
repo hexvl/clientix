@@ -142,6 +142,8 @@ impl MethodConfig {
 
         quote! {
             pub #sig {
+                use clientix::client::request::ClientixRequestBuilder;
+                
                 self.client
                     #compiled_method
                     .path(#method_path)
@@ -217,8 +219,9 @@ impl MethodConfig {
 
     fn compile_body(&self) -> TokenStream2 {
         if let Some(body_variable) = &self.arguments_config.request_body_arg {
+            let content_type: String = self.consumes.into();
             quote! {
-                .body(#body_variable, clientix::core::headers::content_type::ContentType::ApplicationJson)
+                .body(#body_variable, #content_type.to_string().try_into().unwrap())
             }
         } else {
             quote! {}
@@ -232,16 +235,23 @@ impl MethodConfig {
             .text()
             #compiled_async_directive
         };
-        let compiled_json_response = quote! {
+        let compiled_object_method = match self.produces {
+            ContentType::ApplicationJson => quote!{.json()},
+            ContentType::ApplicationXml => quote!{.xml()},
+            ContentType::ApplicationXWwwFormUrlEncoded => quote!{.urlencoded()},
+            ContentType::TextHtml => quote!{.text()}
+        };
+
+        let compiled_object_response = quote! {
             #compiled_async_directive
-            .json()
+            #compiled_object_method
             #compiled_async_directive
         };
         
         match ReturnKind::from(self.get_signature()) {
             ReturnKind::Unit => quote! {;},
             ReturnKind::ClientixResultOfResponseOfString => compiled_text_response,
-            ReturnKind::ClientixResultOfResponse => compiled_json_response,
+            ReturnKind::ClientixResultOfResponse => compiled_object_response,
             ReturnKind::ClientixResultOfStreamOfString => {
                 if self.async_supported {
                     quote! {
@@ -272,7 +282,7 @@ impl MethodConfig {
             }
             ReturnKind::ClientixResult => {
                 quote! {
-                    #compiled_json_response
+                    #compiled_object_response
                     .map(|response| response.body())
                 }
             }
@@ -284,7 +294,7 @@ impl MethodConfig {
             }
             ReturnKind::OptionOfResponse => {
                 quote! {
-                    #compiled_json_response
+                    #compiled_object_response
                     .ok()
                 }
             }
@@ -321,7 +331,7 @@ impl MethodConfig {
             }
             ReturnKind::Option => {
                 quote! {
-                    #compiled_json_response
+                    #compiled_object_response
                     .map(|response| response.body())
                     .ok()
                 }
@@ -358,7 +368,7 @@ impl MethodConfig {
             }
             ReturnKind::ClientixResponse => {
                 quote! {
-                    #compiled_json_response
+                    #compiled_object_response
                     .unwrap()
                 }
             }
@@ -371,7 +381,7 @@ impl MethodConfig {
             }
             ReturnKind::Other => {
                 quote! {
-                    #compiled_json_response
+                    #compiled_object_response
                     .map(|response| response.body())
                     .unwrap()
                 }

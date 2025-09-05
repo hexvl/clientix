@@ -1,4 +1,4 @@
-use clientix::client::result::{ClientixResponse, ClientixResult};
+use clientix::client::response::{ClientixResponse, ClientixResult};
 use clientix::{clientix, get, post};
 use crate::dto::{CreateObjectRequest, CreatedObjectResponse};
 
