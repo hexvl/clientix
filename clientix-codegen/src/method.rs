@@ -162,7 +162,6 @@ impl MethodConfig {
             Some(Method::PUT) => quote! {.put()},
             Some(Method::DELETE) => quote! {.delete()},
             Some(Method::HEAD) => quote! {.head()},
-            Some(Method::OPTIONS) => quote! {.options()},
             Some(Method::PATCH) => quote! {.patch()},
             _ => panic!("missing method type")
         })

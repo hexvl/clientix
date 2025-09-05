@@ -33,10 +33,6 @@ impl BlockingClient {
         BlockingRequestBuilder::builder(self.clone(), Method::HEAD)
     }
     
-    pub fn options(&self) -> BlockingRequestBuilder {
-        BlockingRequestBuilder::builder(self.clone(), Method::OPTIONS)
-    }
-    
     pub fn patch(&self) -> BlockingRequestBuilder {
         BlockingRequestBuilder::builder(self.clone(), Method::PATCH)
     }

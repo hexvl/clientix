@@ -159,29 +159,6 @@ pub fn head(attrs: TokenStream, item: TokenStream) -> TokenStream {
 }
 
 /**
-A procedural macro for building an HTTP OPTIONS method of trait. It includes the following attributes:
-- path - a part of the URL path
-- consumes - content-type for request
-- produces - content-type for response
-
-OPTIONS method supports argument macros:
-- #[segment] - maps method arguments to path segments
-- #[query] - maps method arguments to query parameters
-- #[header] - maps method arguments to request headers
-- #[body] - maps method arguments to request body
-
-Example:
-```
-#[options(path = "/{path_query}", consumes = "application/json", produces = "application/json")]
-fn options(&self, #[segment] path_query: &str, #[query] query_param: &str) -> ClientixResult<ClientixResponse<String>>;
-```
-*/
-#[proc_macro_attribute]
-pub fn options(attrs: TokenStream, item: TokenStream) -> TokenStream {
-    parse_method(Method::OPTIONS, item, attrs)
-}
-
-/**
 A procedural macro for building an HTTP PATCH method of trait. It includes the following attributes:
 - path - a part of the URL path
 - consumes - content-type for request
@@ -196,7 +173,7 @@ PATCH method supports argument macros:
 Example:
 ```
 #[patch(path = "/{path_query}", consumes = "application/json", produces = "application/json")]
-fn options(&self, #[segment] path_query: &str, #[query] query_param: &str) -> ClientixResult<ClientixResponse<String>>;
+fn patch(&self, #[segment] path_query: &str, #[query] query_param: &str) -> ClientixResult<ClientixResponse<String>>;
 ```
 */
 #[proc_macro_attribute]
