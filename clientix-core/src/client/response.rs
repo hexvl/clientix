@@ -5,7 +5,7 @@ use thiserror::Error;
 
 pub type ClientixResult<T> = Result<T, ClientixError>;
 
-#[derive(Debug)]
+#[derive(Debug, Default)]
 pub struct ClientixErrorData {
     message: Option<String>
 }

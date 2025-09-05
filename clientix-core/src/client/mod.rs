@@ -1,6 +1,7 @@
 pub mod asynchronous;
 pub mod blocking;
-pub mod result;
+pub mod response;
+pub mod request;
 
 use std::collections::HashMap;
 use std::time::Duration;
@@ -29,12 +30,6 @@ pub struct ClientConfig {
     read_timeout: Option<Duration>,
     connect_timeout: Option<Duration>,
     connection_verbose: bool
-}
-
-#[derive(Clone)]
-struct RequestPath {
-    path_str: String,
-    segments: HashMap<String, String>
 }
 
 impl Clientix {

@@ -1,7 +1,7 @@
 use std::sync::{Arc, Mutex};
 use http::Method;
 use reqwest::Client as ReqwestClient;
-use crate::client::asynchronous::request::AsyncRequestBuilder;
+use crate::client::asynchronous::request::AsyncRequest;
 use crate::client::ClientConfig;
 
 #[derive(Clone)]
@@ -13,28 +13,28 @@ pub struct AsyncClient {
 
 impl AsyncClient {
 
-    pub fn get(&self) -> AsyncRequestBuilder {
-        AsyncRequestBuilder::builder(self.clone(), Method::GET)
+    pub fn get(&self) -> AsyncRequest {
+        AsyncRequest::builder(self.clone(), Method::GET)
     }
 
-    pub fn post(&self) -> AsyncRequestBuilder {
-        AsyncRequestBuilder::builder(self.clone(), Method::POST)
+    pub fn post(&self) -> AsyncRequest {
+        AsyncRequest::builder(self.clone(), Method::POST)
     }
 
-    pub fn put(&self) -> AsyncRequestBuilder {
-        AsyncRequestBuilder::builder(self.clone(), Method::PUT)
+    pub fn put(&self) -> AsyncRequest {
+        AsyncRequest::builder(self.clone(), Method::PUT)
     }
 
-    pub fn delete(&self) -> AsyncRequestBuilder {
-        AsyncRequestBuilder::builder(self.clone(), Method::DELETE)
+    pub fn delete(&self) -> AsyncRequest {
+        AsyncRequest::builder(self.clone(), Method::DELETE)
     }
     
-    pub fn head(&self) -> AsyncRequestBuilder {
-        AsyncRequestBuilder::builder(self.clone(), Method::HEAD)
+    pub fn head(&self) -> AsyncRequest {
+        AsyncRequest::builder(self.clone(), Method::HEAD)
     }
     
-    pub fn patch(&self) -> AsyncRequestBuilder {
-        AsyncRequestBuilder::builder(self.clone(), Method::PATCH)
+    pub fn patch(&self) -> AsyncRequest {
+        AsyncRequest::builder(self.clone(), Method::PATCH)
     }
 
 }

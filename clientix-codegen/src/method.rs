@@ -142,6 +142,8 @@ impl MethodConfig {
 
         quote! {
             pub #sig {
+                use clientix::client::request::ClientixRequestBuilder;
+                
                 self.client
                     #compiled_method
                     .path(#method_path)

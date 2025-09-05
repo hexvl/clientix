@@ -1,7 +1,7 @@
 use bytes::Bytes;
 use reqwest::blocking::Response;
 use serde::de::DeserializeOwned;
-use crate::client::result::{ClientixResponse, ClientixResult};
+use crate::client::response::{ClientixResponse, ClientixResult};
 
 pub struct BlockingResponseHandler {
     result: ClientixResult<Response>

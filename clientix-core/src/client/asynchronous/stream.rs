@@ -5,7 +5,7 @@ use futures_core::Stream;
 use futures_util::{StreamExt, TryStreamExt};
 use http::{HeaderMap, StatusCode, Version};
 use reqwest::Url;
-use crate::client::result::ClientixResult;
+use crate::client::response::ClientixResult;
 
 pub struct ClientixStream<T> {
     version: Version,

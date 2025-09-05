@@ -5,7 +5,7 @@ use futures_util::TryStreamExt;
 use reqwest::Response;
 use serde::de::DeserializeOwned;
 use crate::client::asynchronous::stream::ClientixStream;
-use crate::client::result::{ClientixError, ClientixResponse, ClientixResult};
+use crate::client::response::{ClientixError, ClientixResponse, ClientixResult};
 
 pub struct AsyncResponseHandler {
     result: ClientixResult<Response>
