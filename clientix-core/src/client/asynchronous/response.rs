@@ -30,7 +30,7 @@ impl AsyncResponseHandler {
                     response.text().await?
                 ))
             },
-            Err(error) => Err(ClientixError::Other(error.to_string())),
+            Err(error) => Err(error),
         }
     }
 
@@ -47,7 +47,7 @@ impl AsyncResponseHandler {
                     response.text_with_charset(encoding).await?
                 ))
             },
-            Err(error) => Err(ClientixError::Other(error.to_string())),
+            Err(error) => Err(error),
         }
     }
 
@@ -91,7 +91,7 @@ impl AsyncResponseHandler {
 
                 Ok(ClientixStream::new(version, content_length, status, url, remote_addr, headers, stream))
             },
-            Err(error) => Err(ClientixError::Other(error.to_string())),
+            Err(error) => Err(error),
         }
     }
 
@@ -108,7 +108,7 @@ impl AsyncResponseHandler {
                     response.bytes().await?
                 ))
             },
-            Err(error) => Err(ClientixError::Other(error.to_string())),
+            Err(error) => Err(error),
         }
     }
 
@@ -122,10 +122,10 @@ impl AsyncResponseHandler {
                     response.url().clone(),
                     response.remote_addr(),
                     response.headers().clone(),
-                    response.bytes_stream().map_err(Self::convert_error)
+                    response.bytes_stream().map_err(ClientixError::from)
                 ))
             },
-            Err(error) => Err(ClientixError::Other(error.to_string()))
+            Err(error) => Err(error)
         }
     }
 
@@ -142,7 +142,7 @@ impl AsyncResponseHandler {
                     serde_json::from_str::<T>(response.text().await?.as_str())?
                 ))
             },
-            Err(error) => Err(ClientixError::Other(error.to_string())),
+            Err(error) => Err(error),
         }
     }
 
@@ -160,19 +160,15 @@ impl AsyncResponseHandler {
                         Ok(line) if !line.contains("[DONE]") => futures_util::future::ready(true),
                         _ => futures_util::future::ready(false)
                     })
-                    .map(|line| match &line {
+                    .map(|line| match line {
                         Ok(line) => Ok(serde_json::from_str::<T>(line.as_str())?),
-                        _ => Err(ClientixError::Other("invalid JSON".to_string())),
+                        Err(err) => Err(err),
                     });
 
                 Ok(ClientixStream::new(version, content_length, status, url, remote_addr, headers, stream))
             }
-            Err(error) => Err(ClientixError::Other(error.to_string())),
+            Err(error) => Err(error),
         }
-    }
-
-    fn convert_error(error: reqwest::Error) -> ClientixError {
-        ClientixError::Other(error.to_string())
     }
 
 }

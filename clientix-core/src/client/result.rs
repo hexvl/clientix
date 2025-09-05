@@ -5,20 +5,31 @@ use thiserror::Error;
 
 pub type ClientixResult<T> = Result<T, ClientixError>;
 
-// TODO: need to correct global error handling
+#[derive(Debug)]
+pub struct ClientixErrorData {
+    message: Option<String>
+}
+
+pub struct ClientixErrorBuilder {
+    message: Option<String>
+}
+
 #[derive(Error, Debug)]
 pub enum ClientixError {
     #[error("Network error")]
-    Network(#[from] reqwest::Error),
+    Http(ClientixErrorData, #[source] Option<Box<dyn std::error::Error + Send + Sync>>),
+
+    #[error("IO error")]
+    IO(ClientixErrorData, #[source] Option<Box<dyn std::error::Error + Send + Sync>>),
 
     #[error("Invalid request")]
-    InvalidRequest(String),
+    InvalidRequest(ClientixErrorData, #[source] Option<Box<dyn std::error::Error + Send + Sync>>),
 
     #[error("invalid response")]
-    InvalidResponse(#[from] serde_json::Error),
+    InvalidResponse(ClientixErrorData, #[source] Option<Box<dyn std::error::Error + Send + Sync>>),
 
     #[error("Other error")]
-    Other(String),
+    Other(ClientixErrorData, #[source] Option<Box<dyn std::error::Error + Send + Sync>>),
 }
 
 #[derive(Debug)]
@@ -30,6 +41,56 @@ pub struct ClientixResponse<T> {
     remote_addr: Option<SocketAddr>,
     headers: HeaderMap,
     body: T
+}
+
+impl From<reqwest::Error> for ClientixError {
+    fn from(err: reqwest::Error) -> ClientixError {
+        ClientixError::Http(ClientixErrorData::new(), Some(Box::new(err)))
+    }
+}
+
+impl From<serde_json::Error> for ClientixError {
+    fn from(err: serde_json::Error) -> ClientixError {
+        ClientixError::IO(ClientixErrorData::new(), Some(Box::new(err)))
+    }
+}
+
+impl ClientixErrorData {
+    pub fn new() -> ClientixErrorData {
+        ClientixErrorData {
+            message: None
+        }
+    }
+
+    pub fn message(&self) -> &Option<String> {
+        &self.message
+    }
+
+    pub fn builder() -> ClientixErrorBuilder {
+        ClientixErrorBuilder::new()
+    }
+
+}
+
+impl ClientixErrorBuilder {
+
+    fn new() -> Self {
+        ClientixErrorBuilder {
+            message: None
+        }
+    }
+
+    pub fn message(mut self, message: &str) -> Self {
+        self.message = Some(message.to_string());
+        self
+    }
+
+    pub fn build(self) -> ClientixErrorData {
+        ClientixErrorData {
+            message: self.message
+        }
+    }
+
 }
 
 impl <T> ClientixResponse<T> where T: Clone {

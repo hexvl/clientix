@@ -10,7 +10,7 @@ use strfmt::strfmt;
 use crate::client::blocking::client::BlockingClient;
 use crate::client::blocking::response::BlockingResponseHandler;
 use crate::client::RequestPath;
-use crate::client::result::{ClientixError, ClientixResult};
+use crate::client::result::{ClientixError, ClientixErrorData, ClientixResult};
 use crate::core::headers::content_type::ContentType;
 
 struct BlockingRequestConfig {
@@ -102,42 +102,34 @@ impl BlockingRequestBuilder {
     }
 
     pub fn body<T: Serialize>(mut self, body: T, content_type: ContentType) -> Self {
-        // TODO: отрефакторить функцию, разделить на множество функций, каждая из которых будет обслуживать свой тип
-        let mut error = None;
         match content_type {
             ContentType::ApplicationJson => {
                 match serde_json::to_string(&body) {
-                    Ok(body) => {
-                        self.config.body = Some(body.into());
-                    }
-                    Err(_) => error = Some(ClientixError::InvalidRequest("invalid body".to_string()))
+                    Ok(body) => self.config.body = Some(body.into()),
+                    Err(err) => self.result = Err(ClientixError::IO(ClientixErrorData::new(), Some(err.into())))
                 }
             }
             ContentType::ApplicationXWwwFormUrlEncoded => {
                 match serde_urlencoded::to_string(&body) {
-                    Ok(body) => {
-                        self.config.body = Some(body.into());
-                    }
-                    Err(_) => error = Some(ClientixError::InvalidRequest("invalid body".to_string())),
+                    Ok(body) => self.config.body = Some(body.into()),
+                    Err(err) => self.result = Err(ClientixError::IO(ClientixErrorData::new(), Some(err.into())))
                 }
             },
-            _ => error = Some(ClientixError::InvalidRequest("invalid content type".to_string())),
+            _ => {
+                let error_data = ClientixErrorData::builder().message(format!("invalid content type: {:?}", content_type).as_str()).build();
+                self.result = Err(ClientixError::InvalidRequest(error_data, None));
+            }
         };
-
-        if let Some(error) = error {
-            self.result = Err(error);
-        }
-
+        
         match content_type.try_into() {
             Ok(content_type) => {
                 self.config.headers.insert(CONTENT_TYPE, content_type);
             },
-            Err(_) => {
-                self.result = Err(ClientixError::InvalidRequest("invalid content type".to_string()));
+            Err(err) => {
+                let error_data = ClientixErrorData::builder().message(format!("invalid content type: {:?}. {:?}", content_type, err).as_str()).build();
+                self.result = Err(ClientixError::InvalidRequest(error_data, None));
             }
         }
-
-
 
         self
     }
@@ -151,36 +143,45 @@ impl BlockingRequestBuilder {
         let full_path = format!("{}{}", self.client.path, method_path);
         let url = format!("{}{}", self.client.url, full_path);
 
-        if let Ok(client) = self.client.client.lock() {
-            let mut request_builder = match self.method {
-                Method::GET => client.get(url.clone()),
-                Method::POST => client.post(url.clone()),
-                Method::PUT => client.put(url.clone()),
-                Method::DELETE => client.delete(url.clone()),
-                _ => todo!(),
-            };
+        match self.client.client.lock() {
+            Ok(client) => {
+                let mut request_builder = match self.method {
+                    Method::GET => client.get(url.clone()),
+                    Method::POST => client.post(url.clone()),
+                    Method::PUT => client.put(url.clone()),
+                    Method::DELETE => client.delete(url.clone()),
+                    Method::HEAD => client.head(url.clone()),
+                    Method::PATCH => client.patch(url.clone()),
+                    _ => {
+                        let error_data = ClientixErrorData::builder().message(format!("invalid method: {:?}", self.method).as_str()).build();
+                        return BlockingResponseHandler::new(Err(ClientixError::InvalidRequest(error_data, None)));
+                    },
+                };
 
-            request_builder = request_builder
-                .headers(self.config.headers)
-                .query(&self.config.queries);
+                request_builder = request_builder
+                    .headers(self.config.headers)
+                    .query(&self.config.queries);
 
-            request_builder = match self.config.body {
-                Some(body) => request_builder.body(body),
-                None => request_builder,
-            };
+                request_builder = match self.config.body {
+                    Some(body) => request_builder.body(body),
+                    None => request_builder,
+                };
 
-            request_builder = match self.config.timeout {
-                Some(timeout) => request_builder.timeout(timeout),
-                None => request_builder,
-            };
+                request_builder = match self.config.timeout {
+                    Some(timeout) => request_builder.timeout(timeout),
+                    None => request_builder,
+                };
 
-            return match request_builder.send() {
-                Ok(response) => BlockingResponseHandler::new(Ok(response)),
-                Err(error) => BlockingResponseHandler::new(Err(ClientixError::Network(error)))
+                match request_builder.send() {
+                    Ok(response) => BlockingResponseHandler::new(Ok(response)),
+                    Err(error) => BlockingResponseHandler::new(Err(ClientixError::Http(ClientixErrorData::new(), Some(error.into()))))
+                }
+            },
+            Err(error) => {
+                let error_data = ClientixErrorData::builder().message(format!("client locked: {:?}", error).as_str()).build();
+                BlockingResponseHandler::new(Err(ClientixError::Other(error_data, None)))
             }
         }
-
-        BlockingResponseHandler::new(Err(ClientixError::Other("Client locked".to_string())))
     }
 
     fn insert_header(&mut self, key: &str, value: &str, sensitive: bool) {

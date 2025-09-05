@@ -1,7 +1,7 @@
 use bytes::Bytes;
 use reqwest::blocking::Response;
 use serde::de::DeserializeOwned;
-use crate::client::result::{ClientixError, ClientixResponse, ClientixResult};
+use crate::client::result::{ClientixResponse, ClientixResult};
 
 pub struct BlockingResponseHandler {
     result: ClientixResult<Response>
@@ -26,7 +26,7 @@ impl BlockingResponseHandler {
                     response.text()?
                 ))
             },
-            Err(error) => Err(ClientixError::Other(error.to_string())),
+            Err(error) => Err(error),
         }
     }
 
@@ -43,7 +43,7 @@ impl BlockingResponseHandler {
                     response.text_with_charset(encoding)?
                 ))
             },
-            Err(error) => Err(ClientixError::Other(error.to_string())),
+            Err(error) => Err(error),
         }
     }
 
@@ -60,7 +60,7 @@ impl BlockingResponseHandler {
                     response.bytes()?
                 ))
             },
-            Err(error) => Err(ClientixError::Other(error.to_string())),
+            Err(error) => Err(error),
         }
     }
 
@@ -77,7 +77,7 @@ impl BlockingResponseHandler {
                     serde_json::from_str::<T>(response.text()?.as_str())?
                 ))
             },
-            Err(error) => Err(ClientixError::Other(error.to_string())),
+            Err(error) => Err(error),
         }
     }
 
