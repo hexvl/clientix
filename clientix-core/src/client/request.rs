@@ -2,7 +2,7 @@ use std::collections::HashMap;
 use std::time::Duration;
 use base64::Engine;
 use base64::prelude::BASE64_STANDARD;
-use http::{HeaderMap, HeaderName, HeaderValue, Method};
+use http::{HeaderMap, HeaderName, HeaderValue};
 use http::header::{AUTHORIZATION, CONTENT_TYPE};
 use serde::Serialize;
 use crate::client::response::{ClientixError, ClientixErrorData, ClientixResult};

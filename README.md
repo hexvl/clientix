@@ -132,6 +132,85 @@ Note the #[body] macro on the post method argument - it’s required to map an o
 
 Future plans include expanding the argument macros to provide more flexible client configuration options.
 
+The following example demonstrates how to implement a client with SSE response support using the OpenAI API as an example:
+```rust
+use std::io;
+use std::io::Write;
+use clientix::{clientix, data_transfer, post};
+use clientix::client::asynchronous::ClientixStream;
+
+#[data_transfer]
+pub struct CompletionRequest {
+    pub model: String,
+    pub stream: bool,
+    pub messages: Vec<CompletionMessage>
+}
+
+#[data_transfer]
+pub struct CompletionMessage {
+    pub role: String,
+    pub content: String
+}
+
+#[data_transfer]
+pub struct CompletionResponse {
+    pub model: String,
+    pub choices: Vec<CompletionChoice>
+}
+
+#[data_transfer]
+pub struct CompletionChoice {
+    pub message: Option<CompletionMessage>,
+    pub delta: Option<CompletionDelta>
+}
+
+#[data_transfer]
+pub struct CompletionDelta {
+    pub content: Option<String>
+}
+
+#[clientix(url = "https://api.openai.com", path = "/v1/chat", async = true)]
+trait ChatClient {
+    
+    #[post(path = "/completions", consumes = "application/json", produces = "application/json")]
+    async fn stream_chat_completions(&self, #[body] request: CompletionRequest) -> Option<ClientixStream<CompletionResponse>>;
+
+}
+
+#[tokio::main]
+async fn main() {
+    let chat_client = ChatClient::config()
+        .url("https://api.openai.com")
+        .bearer_auth("<Open AI API token>")
+        .setup();
+
+    let request = CompletionRequest {
+        model: "gpt-4o".to_string(),
+        stream: true,
+        messages: vec![
+            CompletionMessage {
+                role: "user".to_string(),
+                content: "Hello! Write story, please.".to_string(),
+            }
+        ],
+    };
+
+    match chat_client.stream_chat_completions(request).await {
+        Some(stream) => {
+            println!("status: {}", stream.status());
+
+            stream.execute(|value| {
+                if let Ok(response) = value {
+                    print!("{}", response.choices[0].delta.clone().map(|delta| delta.content.unwrap_or(String::new())).unwrap_or(String::new()));
+                    io::stdout().flush().unwrap();
+                }
+            }).await
+        },
+        None => println!("error")
+    }
+}
+```
+
 More examples can be found in the [examples](https://github.com/hexvl/clientix/blob/main/clientix-example/src/lib.rs) directory.
 
 ## Support & Contribution
