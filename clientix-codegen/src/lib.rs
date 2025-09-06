@@ -3,6 +3,11 @@ mod client;
 mod return_kind;
 mod header;
 mod utils;
+mod segment;
+mod placeholder;
+mod body;
+mod query;
+mod arguments;
 
 use proc_macro::TokenStream;
 use quote::quote;
