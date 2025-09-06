@@ -2,14 +2,14 @@
 version.workspace = true
 categories.workspace = true
 authors.workspace = true
+edition.workspace = true
+description.workspace = true
+homepage.workspace = true
+repository.workspace = true
+readme.workspace = true
+license.workspace = true
 
 name = "clientix-core"
-edition = "2021"
-description = "Library for building HTTP clients and requests declaratively with procedural macros - no need to write complex imperative or functional logic."
-homepage = "https://github.com/hexvl/clientix"
-repository = "https://github.com/hexvl/clientix"
-readme = "../README.md"
-license = "MIT OR Apache-2.0"
 
 [dependencies]
 strfmt = "0.2.5"
