@@ -3,7 +3,7 @@ use quote::quote;
 use syn::__private::TokenStream2;
 use syn::parse::Parser;
 use syn::{LitBool, LitStr, PatType};
-use crate::placeholder::PlaceholderConfig;
+use crate::method::placeholder::PlaceholderConfig;
 use crate::utils::throw_error;
 
 #[derive(Clone, Default)]

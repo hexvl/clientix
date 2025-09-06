@@ -1,20 +1,13 @@
-mod method;
 mod client;
-mod return_kind;
-mod header;
+mod method;
 mod utils;
-mod segment;
-mod placeholder;
-mod body;
-mod query;
-mod arguments;
 
 use proc_macro::TokenStream;
 use quote::quote;
 use syn::{parse_macro_input, ItemStruct};
 use clientix_core::prelude::reqwest::Method;
 use crate::client::parse_client;
-use crate::header::parse_header;
+use method::header::parse_header;
 use crate::method::parse_method;
 
 /**

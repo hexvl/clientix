@@ -6,14 +6,18 @@ use syn::parse::Parser;
 use clientix_core::core::headers::content_type::ContentType;
 use clientix_core::prelude::reqwest::header::{ACCEPT, CONTENT_TYPE};
 use clientix_core::prelude::reqwest::Method;
-use crate::arguments::ArgumentsConfig;
-use crate::body::BodyConfig;
-use crate::header::HeaderConfig;
-use crate::placeholder::PlaceholderConfig;
-use crate::query::QueryConfig;
-use crate::return_kind::ReturnKind;
-use crate::segment::SegmentConfig;
+use arguments::ArgumentsConfig;
+use header::HeaderConfig;
+use return_kind::ReturnKind;
 use crate::utils::throw_error;
+
+mod return_kind;
+pub mod header;
+pub mod segment;
+pub mod placeholder;
+pub mod body;
+pub mod query;
+mod arguments;
 
 const GET_METHOD_MACRO: &str = "get";
 const POST_METHOD_MACRO: &str = "post";
@@ -176,7 +180,7 @@ impl MethodConfig {
             #compiled_object_method
             #compiled_async_directive
         };
-        
+
         match ReturnKind::from(self.get_signature()) {
             ReturnKind::Unit => quote! {;},
             ReturnKind::ClientixResultOfResponseOfString => compiled_text_response,

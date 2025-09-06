@@ -2,11 +2,11 @@ use quote::{quote, ToTokens};
 use syn::{Attribute, Meta, PatType};
 use syn::__private::TokenStream2;
 use clientix_core::core::headers::content_type::ContentType;
-use crate::body::BodyConfig;
-use crate::header::HeaderConfig;
-use crate::placeholder::PlaceholderConfig;
-use crate::query::QueryConfig;
-use crate::segment::SegmentConfig;
+use crate::method::body::BodyConfig;
+use crate::method::header::HeaderConfig;
+use crate::method::placeholder::PlaceholderConfig;
+use crate::method::query::QueryConfig;
+use crate::method::segment::SegmentConfig;
 use crate::utils::throw_error;
 
 #[derive(Clone, Default)]
