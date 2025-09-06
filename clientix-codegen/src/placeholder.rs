@@ -1,7 +1,6 @@
-use proc_macro::TokenStream;
-use quote::{quote, ToTokens};
+use quote::quote;
 use syn::__private::TokenStream2;
-use syn::{Attribute, LitStr, PatType};
+use syn::{PatType};
 use syn::parse::Parser;
 use crate::utils::throw_error;
 
@@ -21,7 +20,7 @@ impl PlaceholderConfig {
         let mut placeholder = Self::new();
         placeholder.dry_run = dry_run;
 
-        let parser = syn::meta::parser(|meta| { Ok(()) });
+        let parser = syn::meta::parser(|_| { Ok(()) });
 
         match parser.parse2(attrs.clone().into()) {
             Ok(_) => (),
@@ -31,8 +30,8 @@ impl PlaceholderConfig {
         placeholder
     }
     
-    pub fn parse_argument(pat_type: &PatType, attribute: &Attribute, dry_run: bool) -> Self {
-        let mut placeholder = Self::parse_stream(attribute.to_token_stream(), dry_run);
+    pub fn parse_argument(pat_type: &PatType, attrs: TokenStream2, dry_run: bool) -> Self {
+        let mut placeholder = Self::parse_stream(attrs, dry_run);
         placeholder.argument = Some(pat_type.pat.clone());
         
         placeholder

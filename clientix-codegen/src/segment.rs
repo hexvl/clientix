@@ -1,7 +1,6 @@
-use proc_macro::TokenStream;
-use quote::{quote, ToTokens};
+use quote::quote;
 use syn::__private::TokenStream2;
-use syn::{Attribute, LitStr, PatType};
+use syn::{LitStr, PatType};
 use syn::parse::Parser;
 use crate::utils::throw_error;
 
@@ -47,8 +46,8 @@ impl SegmentConfig {
         segment
     }
 
-    pub fn parse_argument(pat_type: &PatType, attribute: &Attribute, dry_run: bool) -> Self {
-        let mut segment = Self::parse_stream(attribute.to_token_stream(), dry_run);
+    pub fn parse_argument(pat_type: &PatType, attrs: TokenStream2, dry_run: bool) -> Self {
+        let mut segment = Self::parse_stream(attrs, dry_run);
         segment.argument = Some(pat_type.pat.clone());
 
         segment
@@ -56,7 +55,12 @@ impl SegmentConfig {
 
     pub fn compile(&self) -> TokenStream2 {
         let segment_variable = self.argument.clone().expect("missing segment attribute");
-        let segment_id = format!("{}", quote! {#segment_variable});
+        let segment_id = if let Some(name) = &self.name {
+            name.clone()
+        } else {
+            format!("{}", quote! {#segment_variable})
+        };
+
         quote! {
             arguments.insert(#segment_id.to_string(), #segment_variable.to_string());
         }

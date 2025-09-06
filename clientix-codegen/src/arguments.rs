@@ -1,4 +1,4 @@
-use quote::quote;
+use quote::{quote, ToTokens};
 use syn::{Attribute, Meta, PatType};
 use syn::__private::TokenStream2;
 use clientix_core::core::headers::content_type::ContentType;
@@ -49,26 +49,26 @@ impl ArgumentsConfig {
         let mut arguments = Self::default();
 
         pat_type.attrs.clone().into_iter().map(|attr_expr| match attr_expr.meta.clone() {
-            Meta::Path(value) => (value, attr_expr),
-            Meta::List(value) => (value.path, attr_expr),
-            Meta::NameValue(value) => (value.path, attr_expr),
-        }).for_each(|(path, attr_expr)| {
+            Meta::Path(value) => (value, TokenStream2::new(), attr_expr),
+            Meta::List(value) => (value.path, value.tokens.to_token_stream(), attr_expr),
+            Meta::NameValue(value) => (value.path, TokenStream2::new(), attr_expr),
+        }).for_each(|(path, tokens, attr_expr)| {
             match path {
                 ref path if path.is_ident("segment") => {
-                    arguments.segments.push(SegmentConfig::parse_argument(pat_type, &attr_expr, dry_run));
+                    arguments.segments.push(SegmentConfig::parse_argument(pat_type, tokens, dry_run));
                 },
                 ref path if path.is_ident("query") => {
-                    arguments.queries.push(QueryConfig::parse_argument(pat_type, &attr_expr, dry_run));
+                    arguments.queries.push(QueryConfig::parse_argument(pat_type, tokens, dry_run));
                 },
                 ref path if path.is_ident("header") => {
-                    arguments.headers.push(HeaderConfig::parse_argument(pat_type, &attr_expr, dry_run));
+                    arguments.headers.push(HeaderConfig::parse_argument(pat_type, tokens, dry_run));
                 },
                 ref path if path.is_ident("placeholder") => {
-                    arguments.placeholders.push(PlaceholderConfig::parse_argument(pat_type, &attr_expr, dry_run));
+                    arguments.placeholders.push(PlaceholderConfig::parse_argument(pat_type, tokens, dry_run));
                 },
                 ref path if path.is_ident("body") => {
                     match arguments.body {
-                        None => arguments.body = Some(BodyConfig::parse_argument(pat_type, &attr_expr, dry_run)),
+                        None => arguments.body = Some(BodyConfig::parse_argument(pat_type, tokens, dry_run)),
                         Some(_) => throw_error("multiple body arg", dry_run)
                     }
                 },
@@ -110,7 +110,7 @@ impl ArgumentsConfig {
             stream.extend(quote! {});
         } else {
             for header_variable in self.headers.iter() {
-                stream.extend(header_variable.compile());
+                stream.extend(header_variable.compile_with_placeholders(&self.placeholders));
             }
         }
 

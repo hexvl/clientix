@@ -1,7 +1,6 @@
-use proc_macro::TokenStream;
-use quote::{quote, ToTokens};
+use quote::quote;
 use syn::__private::TokenStream2;
-use syn::{Attribute, LitStr, PatType};
+use syn::{ PatType};
 use syn::parse::Parser;
 use clientix_core::core::headers::content_type::ContentType;
 use crate::utils::throw_error;
@@ -22,7 +21,7 @@ impl BodyConfig {
         let mut body = Self::new();
         body.dry_run = dry_run;
 
-        let parser = syn::meta::parser(|meta| { Ok(()) });
+        let parser = syn::meta::parser(|_| { Ok(()) });
 
         match parser.parse2(attrs.clone().into()) {
             Ok(_) => (),
@@ -32,8 +31,8 @@ impl BodyConfig {
         body
     }
 
-    pub fn parse_argument(pat_type: &PatType, attr: &Attribute, dry_run: bool) -> Self {
-        let mut body = Self::parse_stream(attr.to_token_stream(), dry_run);
+    pub fn parse_argument(pat_type: &PatType, attrs: TokenStream2, dry_run: bool) -> Self {
+        let mut body = Self::parse_stream(attrs, dry_run);
         body.argument = Some(pat_type.pat.clone());
         
         body

@@ -1,7 +1,6 @@
-use proc_macro::TokenStream;
-use quote::{quote, ToTokens};
+use quote::quote;
 use syn::__private::TokenStream2;
-use syn::{Attribute, LitStr, PatType};
+use syn::{LitStr, PatType};
 use syn::parse::Parser;
 use crate::utils::throw_error;
 
@@ -47,8 +46,8 @@ impl QueryConfig {
         query
     }
 
-    pub fn parse_argument(pat_type: &PatType, attribute: &Attribute, dry_run: bool) -> Self {
-        let mut query = Self::parse_stream(attribute.to_token_stream(), dry_run);
+    pub fn parse_argument(pat_type: &PatType, attrs: TokenStream2, dry_run: bool) -> Self {
+        let mut query = Self::parse_stream(attrs, dry_run);
         query.argument = Some(pat_type.pat.clone());
 
         query
@@ -56,7 +55,12 @@ impl QueryConfig {
 
     pub fn compile(&self) -> TokenStream2 {
         let query_variable = self.argument.clone().expect("missing segment attribute");
-        let query_id = format!("{}", quote! {#query_variable});
+        let query_id = if let Some(name) = &self.name {
+            name.clone()
+        } else {
+            format!("{}", quote! {#query_variable})
+        };
+        
         quote!(.query(#query_id, #query_variable.to_string().as_str()))
     }
 

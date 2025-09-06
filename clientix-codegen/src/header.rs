@@ -1,8 +1,8 @@
 use proc_macro::TokenStream;
-use quote::{quote, ToTokens};
+use quote::quote;
 use syn::__private::TokenStream2;
 use syn::parse::Parser;
-use syn::{Attribute, LitBool, LitStr, PatType};
+use syn::{LitBool, LitStr, PatType};
 use crate::placeholder::PlaceholderConfig;
 use crate::utils::throw_error;
 
@@ -60,18 +60,18 @@ impl HeaderConfig {
         header
     }
 
-    pub fn parse_argument(pat_type: &PatType, attribute: &Attribute, dry_run: bool) -> Self {
-        let mut header = Self::parse_stream(attribute.to_token_stream(), dry_run);
+    pub fn parse_argument(pat_type: &PatType, attrs: TokenStream2, dry_run: bool) -> Self {
+        let mut header = Self::parse_stream(attrs, dry_run);
         header.argument = Some(pat_type.pat.clone());
 
         header
     }
-    
+
     pub fn compile(&self) -> TokenStream2 {
-        self.compile_by_placeholders(&Vec::new())
+        self.compile_with_placeholders(&Vec::new())
     }
-    
-    pub fn compile_by_placeholders(&self, placeholders: &Vec<PlaceholderConfig>) -> TokenStream2 {
+
+    pub fn compile_with_placeholders(&self, placeholders: &Vec<PlaceholderConfig>) -> TokenStream2 {
         if let Some(header_argument) = &self.argument {
             let header_id = format!("{}", quote! {#header_argument});
             quote!(.header(#header_id, #header_argument.to_string().as_str()))
@@ -84,7 +84,7 @@ impl HeaderConfig {
             let value = self.value.clone().unwrap();
 
             let mut stream = TokenStream2::new();
-            if !placeholders.is_empty() { 
+            if !placeholders.is_empty() {
                 stream.extend(quote! {
                     let mut arguments = std::collections::HashMap::new();
                 });
