@@ -5,8 +5,8 @@ use crate::dto::{CreateObjectRequest, CreatedObjectResponse};
 #[clientix(url = "https://api.restful-api.dev", async = true)]
 pub trait AsyncExampleClient {
 
-    #[get(path = "/objects", produces = "application/json", consumes = "application/json")]
-    async fn get_result_full_response_string(&self, #[segment] arg: &str) -> ClientixResult<ClientixResponse<String>>;
+    #[get(path = "/objects")]
+    async fn get_result_full_response_string(&self) -> ClientixResult<ClientixResponse<String>>;
 
     #[get(path = "/objects")]
     async fn get_result_string(&self) -> ClientixResult<String>;
