@@ -5,27 +5,38 @@ use syn::__private::TokenStream2;
 use syn::parse::Parser;
 use clientix_core::core::headers::content_type::ContentType;
 use clientix_core::prelude::reqwest::Method;
+use crate::header::HeaderConfig;
 use crate::return_kind::ReturnKind;
+use crate::utils::throw_error;
+
+const GET_METHOD_MACRO: &str = "get";
+const POST_METHOD_MACRO: &str = "post";
+const PUT_METHOD_MACRO: &str = "put";
+const DELETE_METHOD_MACRO: &str = "delete";
+const HEAD_METHOD_MACRO: &str = "head";
+const PATCH_METHOD_MACRO: &str = "patch";
+const HEADER_METHOD_MACRO: &str = "header";
 
 #[derive(Clone)]
 pub struct MethodArgumentsConfig {
     request_segment_args: Vec<Box<syn::Pat>>,
     request_query_args: Vec<Box<syn::Pat>>,
     request_header_args: Vec<Box<syn::Pat>>,
+    request_placeholder_arg: Vec<Box<syn::Pat>>,
     request_body_arg: Option<Box<syn::Pat>>,
 }
 
 #[derive(Clone)]
 pub struct MethodConfig {
-    item: Option<TraitItemFn>,
     attributes: Vec<Attribute>,
     signature: Option<Signature>,
     method: Option<Method>,
     path: Option<String>,
     consumes: ContentType,
     produces: ContentType,
+    headers: Vec<HeaderConfig>,
     async_supported: bool,
-    postprocessing: bool,
+    dry_run: bool,
     arguments_config: MethodArgumentsConfig,
 }
 
@@ -33,51 +44,34 @@ impl From<TraitItemFn> for MethodConfig {
 
     fn from(item: TraitItemFn) -> Self {
         let mut method_attrs = MethodConfig {
-            item: Some(item.clone()),
-            attributes: item.clone().attrs,
-            signature: Some(item.clone().sig),
+            attributes: Vec::new(),
+            signature: None,
             method: None,
             path: None,
             consumes: ContentType::ApplicationJson,
             produces: ContentType::ApplicationJson,
+            headers: Default::default(),
             async_supported: false,
-            postprocessing: false,
+            dry_run: false,
             arguments_config: MethodArgumentsConfig {
                 request_segment_args: vec![],
                 request_query_args: vec![],
                 request_header_args: vec![],
+                request_placeholder_arg: vec![],
                 request_body_arg: None
             }
         };
 
-        for attr_expr in method_attrs.attributes.clone().iter() {
-            match &attr_expr.meta {
-                Meta::Path(value) => {
-                    let method: Method = value.get_ident()
-                        .map(|value| value.to_string().to_uppercase())
-                        .map(|value| value.as_str().try_into().expect(format!("invalid method: {value}").as_str()))
-                        .expect("unexpected ident");
+        let attributes = item.attrs.clone();
+        method_attrs.parse_macros(HEADER_METHOD_MACRO, &attributes);
+        method_attrs.parse_macros(GET_METHOD_MACRO, &attributes);
+        method_attrs.parse_macros(POST_METHOD_MACRO, &attributes);
+        method_attrs.parse_macros(PUT_METHOD_MACRO, &attributes);
+        method_attrs.parse_macros(DELETE_METHOD_MACRO, &attributes);
+        method_attrs.parse_macros(HEAD_METHOD_MACRO, &attributes);
+        method_attrs.parse_macros(PATCH_METHOD_MACRO, &attributes);
 
-                    method_attrs.parse_attrs(method.into(), TokenStream2::new());
-                    method_attrs.parse_args(item.clone());
-                }
-                Meta::List(value) => {
-                    let method: Method = value.path.get_ident()
-                        .map(|value| value.to_string().to_uppercase())
-                        .map(|value| value.as_str().try_into().expect(format!("invalid method: {value}").as_str()))
-                        .expect("unexpected ident");
-                    
-                    let attrs: TokenStream2 = value.tokens.to_token_stream();
-
-                    method_attrs.parse_attrs(method.into(), attrs);
-                    method_attrs.parse_args(item.clone());
-                }
-                _ => {
-                    panic!("unexpected attribute");
-                }
-            }
-        }
-
+        method_attrs.parse_args(item);
         method_attrs
     }
 
@@ -87,24 +81,25 @@ impl MethodConfig {
 
     pub fn create(method: Method, item: TokenStream, attrs: TokenStream) -> Self {
         let mut method_config = MethodConfig {
-            item: None,
-            attributes: vec![],
+            attributes: Vec::new(),
             signature: None,
             method: None,
             path: None,
             consumes: ContentType::ApplicationJson,
             produces: ContentType::ApplicationJson,
+            headers: Default::default(),
             async_supported: false,
-            postprocessing: true,
+            dry_run: true,
             arguments_config: MethodArgumentsConfig {
                 request_segment_args: vec![],
                 request_query_args: vec![],
                 request_header_args: vec![],
+                request_placeholder_arg: vec![],
                 request_body_arg: None
             }
         };
 
-        method_config.parse(method, TokenStream2::from(item), TokenStream2::from(attrs));
+        method_config.parse_stream(method, TokenStream2::from(item), TokenStream2::from(attrs));
 
         method_config
     }
@@ -114,18 +109,19 @@ impl MethodConfig {
     }
 
     pub fn compile_declaration(&self) -> TokenStream2 {
-        let attrs = self.get_attributes();
+        let attributes = self.get_attributes();
         let signature = self.get_signature();
 
-        if self.postprocessing {
+        if self.dry_run {
             quote! {
-                #[allow(async_fn_in_trait)]
-                #(#attrs)*
                 #signature;
             }
         } else {
-            let item = self.item.clone().expect("unexpected method");
-            quote! {#item}
+            quote! {
+                #(#attributes)*
+                #[allow(async_fn_in_trait)]
+                #signature;
+            }
         }
     }
 
@@ -186,7 +182,7 @@ impl MethodConfig {
     }
 
     fn compile_headers(&self) -> TokenStream2 {
-        if self.arguments_config.request_header_args.is_empty() {
+        if self.arguments_config.request_header_args.is_empty() && self.headers.is_empty() {
             quote! {}
         } else {
             let mut stream = TokenStream2::new();
@@ -194,6 +190,13 @@ impl MethodConfig {
                 let header_id = format!("{}", quote! {#header_variable});
                 stream.extend(quote! {
                     .header(#header_id, #header_variable)
+                })
+            }
+
+            for header in self.headers.iter() {
+                let compiled_header = header.compile_header(self.arguments_config.request_placeholder_arg.clone());
+                stream.extend(quote! {
+                    #compiled_header
                 })
             }
 
@@ -259,7 +262,7 @@ impl MethodConfig {
                         .text_stream()
                     }
                 } else {
-                    self.throw_error("Streams not supported for not async clients");
+                    throw_error("Streams not supported for not async clients", self.dry_run);
                     quote!()
                 }
             },
@@ -270,7 +273,7 @@ impl MethodConfig {
                         .json_stream()
                     }
                 } else {
-                    self.throw_error("Streams not supported for not async clients");
+                    throw_error("Streams not supported for not async clients", self.dry_run);
                     quote!()
                 }
             },
@@ -306,7 +309,7 @@ impl MethodConfig {
                         .ok()
                     }
                 } else {
-                    self.throw_error("Streams not supported for not async clients");
+                    throw_error("Streams not supported for not async clients", self.dry_run);
                     quote!()
                 }
             }
@@ -318,7 +321,7 @@ impl MethodConfig {
                         .ok()
                     }
                 } else {
-                    self.throw_error("Streams not supported for not async clients");
+                    throw_error("Streams not supported for not async clients", self.dry_run);
                     quote!()
                 }
             }
@@ -344,7 +347,7 @@ impl MethodConfig {
                         .unwrap()
                     }
                 } else {
-                    self.throw_error("Streams not supported for not async clients");
+                    throw_error("Streams not supported for not async clients", self.dry_run);
                     quote!()
                 }
             }
@@ -356,7 +359,7 @@ impl MethodConfig {
                         .unwrap()
                     }
                 } else {
-                    self.throw_error("Streams not supported for not async clients");
+                    throw_error("Streams not supported for not async clients", self.dry_run);
                     quote!()
                 }
             }
@@ -397,19 +400,45 @@ impl MethodConfig {
         }
     }
 
-    fn parse(&mut self, method: Method, item: TokenStream2, attrs: TokenStream2) {
-        self.parse_item(item);
-        self.parse_attrs(method, attrs);
+    fn parse_stream(&mut self, method: Method, item: TokenStream2, attrs: TokenStream2) {
+        self.parse_item(method, item, attrs);
     }
 
-    fn parse_item(&mut self, item: TokenStream2) {
-
-        let item: TraitItemFn = match syn::parse2(item) {
-            Ok(item) => item,
-            Err(err) => panic!("{}", err.to_string())
+    fn parse_item(&mut self, method: Method, item: TokenStream2, attrs: TokenStream2) {
+        match syn::parse2(item) {
+            Ok(item) => {
+                self.parse_attrs(method.to_string().to_lowercase(), attrs);
+                self.parse_args(item);
+            },
+            Err(err) => throw_error(format!("{}", err.to_string()).as_str(), self.dry_run)
         };
+    }
 
-        self.parse_args(item);
+    fn parse_macros(&mut self, macro_name: &str, attributes: &Vec<Attribute>) {
+        attributes.iter()
+            .map(|attr_expr| match &attr_expr.meta {
+                Meta::Path(value) => (value, TokenStream2::new(), attr_expr),
+                Meta::List(value) => (&value.path, value.tokens.to_token_stream(), attr_expr),
+                Meta::NameValue(_) => panic!("unexpected attribute syntax"),
+            })
+            .filter(|(path, _, _)| path.is_ident(macro_name))
+            .for_each(|(_, tokens, attr_expr)| {
+                self.parse_attrs(macro_name.to_string(), tokens);
+                self.attributes.push(attr_expr.clone());
+            });
+    }
+
+    fn parse_attrs(&mut self, ident: String, attrs: TokenStream2) {
+        match ident.as_str() {
+            HEADER_METHOD_MACRO => self.parse_header_attrs(attrs),
+            GET_METHOD_MACRO => self.parse_method_attrs(Method::GET, attrs),
+            POST_METHOD_MACRO => self.parse_method_attrs(Method::POST, attrs),
+            PUT_METHOD_MACRO => self.parse_method_attrs(Method::PUT, attrs),
+            DELETE_METHOD_MACRO => self.parse_method_attrs(Method::DELETE, attrs),
+            HEAD_METHOD_MACRO => self.parse_method_attrs(Method::HEAD, attrs),
+            PATCH_METHOD_MACRO => self.parse_method_attrs(Method::PATCH, attrs),
+            _ => throw_error("not valid macro", self.dry_run),
+        };
     }
 
     fn parse_args(&mut self, mut item: TraitItemFn) {
@@ -436,10 +465,13 @@ impl MethodConfig {
                             // TODO: очень не гибко, добавить возможность задавать алиас для заголовка
                             self.arguments_config.request_header_args.push(arg_type.pat.clone());
                         }
+                        ref attr if attr.is_ident("placeholder") => {
+                            self.arguments_config.request_placeholder_arg.push(arg_type.pat.clone());
+                        }
                         ref attr if attr.is_ident("body") => {
                             match self.arguments_config.request_body_arg {
                                 None => self.arguments_config.request_body_arg = Some(arg_type.pat.clone()),
-                                Some(_) => self.throw_error("multiple body arg")
+                                Some(_) => throw_error("multiple body arg", self.dry_run)
                             }
                         }
                         _ => attrs.push(attr.clone()),
@@ -449,10 +481,10 @@ impl MethodConfig {
                 arg_type.attrs = attrs;
             });
 
-        self.signature = Some(item.sig);
+        self.signature = Some(item.sig.clone());
     }
 
-    fn parse_attrs(&mut self, method: Method, attrs: TokenStream2) {
+    fn parse_method_attrs(&mut self, method: Method, attrs: TokenStream2) {
         let parser = syn::meta::parser(|meta| {
             match meta.path {
                 ref path if path.is_ident("path") => {
@@ -466,7 +498,7 @@ impl MethodConfig {
                             self.consumes = consumes;
                         }
                         Err(_) => {
-                            self.throw_error("invalid content-type for consumes");
+                            throw_error("invalid content-type for consumes", self.dry_run);
                         }
                     };
 
@@ -478,7 +510,7 @@ impl MethodConfig {
                             self.produces = produces;
                         }
                         Err(_) => {
-                            self.throw_error("invalid content-type for produces");
+                            throw_error("invalid content-type for produces", self.dry_run);
                         }
                     }
 
@@ -490,26 +522,23 @@ impl MethodConfig {
 
         match parser.parse2(attrs) {
             Ok(_) => (),
-            Err(error) => self.throw_error(error.to_string().as_str()),
+            Err(error) => throw_error(error.to_string().as_str(), self.dry_run),
         }
 
         self.method = Some(method);
     }
 
-    fn get_attributes(&self) -> Vec<Attribute> {
-        self.attributes.clone()
+    fn parse_header_attrs(&mut self, attrs: TokenStream2) {
+        let header_config = HeaderConfig::parse(attrs, false);
+        self.headers.push(header_config);
+    }
+
+    fn get_attributes(&self) -> &Vec<Attribute> {
+        &self.attributes
     }
 
     fn get_signature(&self) -> Signature {
         self.signature.clone().expect("missing method signature")
-    }
-
-    fn throw_error(&self, message: &str) {
-        if self.postprocessing {
-            panic!("{}", message);
-        } else {
-            eprintln!("{}", message);
-        }
     }
 
 }

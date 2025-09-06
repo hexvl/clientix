@@ -1,12 +1,15 @@
 mod method;
 mod client;
 mod return_kind;
+mod header;
+mod utils;
 
 use proc_macro::TokenStream;
 use quote::quote;
 use syn::{parse_macro_input, ItemStruct};
 use clientix_core::prelude::reqwest::Method;
 use crate::client::parse_client;
+use crate::header::parse_header;
 use crate::method::parse_method;
 
 /**
@@ -181,12 +184,9 @@ pub fn patch(attrs: TokenStream, item: TokenStream) -> TokenStream {
     parse_method(Method::PATCH, item, attrs)
 }
 
-/**
-// TODO: not supported
-*/
 #[proc_macro_attribute]
 pub fn header(attrs: TokenStream, item: TokenStream) -> TokenStream {
-    TokenStream::default() // TODO:
+    parse_header(item, attrs)
 }
 
 /**
@@ -212,6 +212,7 @@ pub struct CreatedObjectResponse {
 pub fn data_transfer(_: TokenStream, item: TokenStream) -> TokenStream {
     let item = parse_macro_input!(item as ItemStruct);
 
+    // TODO: научить data_transfer использовать все возможности serde на максимум
     TokenStream::from(quote! {
         #[derive(clientix::prelude::serde::Serialize, clientix::prelude::serde::Deserialize, Debug, Clone)]
         #[serde(crate = "clientix::prelude::serde")]
