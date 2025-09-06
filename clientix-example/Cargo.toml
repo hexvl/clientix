@@ -1,6 +1,7 @@
 [package]
 version.workspace = true
 categories.workspace = true
+authors.workspace = true
 
 name = "clientix-example"
 edition = "2021"
