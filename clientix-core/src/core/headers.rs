@@ -1,4 +1,5 @@
 pub mod content_type {
+    use std::fmt::Display;
     use reqwest::header::HeaderValue;
 
     #[derive(Debug, Clone, Copy)]
@@ -23,14 +24,15 @@ pub mod content_type {
         }
     }
 
-    impl From<ContentType> for String {
-        fn from(value: ContentType) -> String {
-            match value {
+    impl Display for ContentType {
+        fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+            let str = match self {
                 ContentType::ApplicationJson => "application/json".to_string(),
                 ContentType::ApplicationXml => "application/xml".to_string(),
                 ContentType::ApplicationXWwwFormUrlEncoded => "application/x-www-form-urlencoded".to_string(),
                 ContentType::TextHtml => "text/html".to_string(),
-            }
+            };
+            write!(f, "{}", str)
         }
     }
 
@@ -39,7 +41,7 @@ pub mod content_type {
         type Error = http::header::InvalidHeaderValue;
 
         fn try_from(value: ContentType) -> Result<Self, Self::Error> {
-            let string: String = value.into();
+            let string: String = value.to_string();
             HeaderValue::from_str(string.as_str())
         }
     }

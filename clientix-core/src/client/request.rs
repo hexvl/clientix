@@ -8,30 +8,13 @@ use serde::Serialize;
 use crate::client::response::{ClientixError, ClientixErrorData, ClientixResult};
 use crate::core::headers::content_type::ContentType;
 
-#[derive(Clone, Default)]
-pub struct RequestPath {
-    path_str: String,
-    segments: HashMap<String, String>
-}
-
-#[derive(Clone, Default)]
+#[derive(Clone, Debug, Default)]
 pub struct RequestConfig {
-    path: RequestPath,
+    path: String,
     headers: HeaderMap,
     queries: Vec<(String, String)>,
     body: Option<String>,
     timeout: Option<Duration>
-}
-
-impl RequestPath {
-    
-    pub fn new() -> RequestPath {
-        RequestPath {
-            path_str: Default::default(),
-            segments: Default::default(),
-        }
-    }
-    
 }
 
 pub trait ClientixRequestBuilder {
@@ -42,11 +25,6 @@ pub trait ClientixRequestBuilder {
     
     fn path(mut self, path: &str) -> Self where Self: Sized {
         self.config().set_path(path);
-        self
-    }
-
-    fn path_segment(mut self, id: &str, value: &str) -> Self where Self: Sized {
-        self.config().set_path_segment(id, value);
         self
     }
 
@@ -106,21 +84,13 @@ impl RequestConfig {
     }
     
     pub fn get_path(&self) -> &String { 
-        &self.path.path_str 
+        &self.path 
     }
     
     pub fn set_path(&mut self, path: &str) {
-        self.path.path_str = path.to_string();
+        self.path = path.to_string();
     }
     
-    pub fn get_path_segments(&self) -> &HashMap<String, String> {
-        &self.path.segments
-    }
-    
-    pub fn set_path_segment(&mut self, path: &str, segment: &str) {
-        self.path.segments.insert(path.to_string(), segment.to_string());
-    }
-
     pub fn get_queries(&self) -> &Vec<(String, String)> {
         &self.queries
     }

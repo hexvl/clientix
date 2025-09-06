@@ -44,15 +44,16 @@ pub fn clientix(attrs: TokenStream, item: TokenStream) -> TokenStream {
 
 /**
 A procedural macro for building an HTTP GET method of trait. It includes the following attributes:
-- path - a part of the URL path
-- consumes - content-type for request
-- produces - content-type for response
+- path - a part of the URL path (String)
+- consumes - content type for request, support: application/json, application/xml, application/x-www-form-urlencoded (String)
+- produces - accept type for response, support: application/json, application/xml, application/x-www-form-urlencoded (String)
 
 GET method supports argument macros:
-- #[segment] - maps method arguments to path segments
-- #[query] - maps method arguments to query parameters
-- #[header] - maps method arguments to request headers
-- #[body] - maps method arguments to request body
+- #[segment] - maps method arguments to path segments (simple types, String)
+- #[query] - maps method arguments to query parameters (simple types, String)
+- #[header] - maps method arguments to request headers (simple types, String)
+- #[body] - maps method arguments to request body (object implemented #[data_transfer])
+- #[placeholder] - maps method arguments to request header placeholders
 
 Example:
 ```
@@ -67,15 +68,16 @@ pub fn get(attrs: TokenStream, item: TokenStream) -> TokenStream {
 
 /**
 A procedural macro for building an HTTP POST method of trait. It includes the following attributes:
-- path - a part of the URL path
-- consumes - content-type for request
-- produces - content-type for response
+- path - a part of the URL path (String)
+- consumes - content type for request, support: application/json, application/xml, application/x-www-form-urlencoded (String)
+- produces - accept type for response, support: application/json, application/xml, application/x-www-form-urlencoded (String)
 
 POST method supports argument macros:
-- #[segment] - maps method arguments to path segments
-- #[query] - maps method arguments to query parameters
-- #[header] - maps method arguments to request headers
-- #[body] - maps method arguments to request body
+- #[segment] - maps method arguments to path segments (simple types, String)
+- #[query] - maps method arguments to query parameters (simple types, String)
+- #[header] - maps method arguments to request headers (simple types, String)
+- #[body] - maps method arguments to request body (object implemented #[data_transfer])
+- #[placeholder] - maps method arguments to request header placeholders
 
 Example:
 ```
@@ -92,15 +94,16 @@ pub fn post(attrs: TokenStream, item: TokenStream) -> TokenStream {
 
 /**
 A procedural macro for building an HTTP PUT method of trait. It includes the following attributes:
-- path - a part of the URL path
-- consumes - content-type for request
-- produces - content-type for response
+- path - a part of the URL path (String)
+- consumes - content type for request, support: application/json, application/xml, application/x-www-form-urlencoded (String)
+- produces - accept type for response, support: application/json, application/xml, application/x-www-form-urlencoded (String)
 
 PUT method supports argument macros:
-- #[segment] - maps method arguments to path segments
-- #[query] - maps method arguments to query parameters
-- #[header] - maps method arguments to request headers
-- #[body] - maps method arguments to request body
+- #[segment] - maps method arguments to path segments (simple types, String)
+- #[query] - maps method arguments to query parameters (simple types, String)
+- #[header] - maps method arguments to request headers (simple types, String)
+- #[body] - maps method arguments to request body (object implemented #[data_transfer])
+- #[placeholder] - maps method arguments to request header placeholders
 
 Example:
 ```
@@ -117,15 +120,16 @@ pub fn put(attrs: TokenStream, item: TokenStream) -> TokenStream {
 
 /**
 A procedural macro for building an HTTP DELETE method of trait. It includes the following attributes:
-- path - a part of the URL path
-- consumes - content-type for request
-- produces - content-type for response
+- path - a part of the URL path (String)
+- consumes - content type for request, support: application/json, application/xml, application/x-www-form-urlencoded (String)
+- produces - accept type for response, support: application/json, application/xml, application/x-www-form-urlencoded (String)
 
 DELETE method supports argument macros:
-- #[segment] - maps method arguments to path segments
-- #[query] - maps method arguments to query parameters
-- #[header] - maps method arguments to request headers
-- #[body] - maps method arguments to request body
+- #[segment] - maps method arguments to path segments (simple types, String)
+- #[query] - maps method arguments to query parameters (simple types, String)
+- #[header] - maps method arguments to request headers (simple types, String)
+- #[body] - maps method arguments to request body (object implemented #[data_transfer])
+- #[placeholder] - maps method arguments to request header placeholders
 
 Example:
 ```
@@ -140,15 +144,16 @@ pub fn delete(attrs: TokenStream, item: TokenStream) -> TokenStream {
 
 /**
 A procedural macro for building an HTTP HEAD method of trait. It includes the following attributes:
-- path - a part of the URL path
-- consumes - content-type for request
-- produces - content-type for response
+- path - a part of the URL path (String)
+- consumes - content type for request, support: application/json, application/xml, application/x-www-form-urlencoded (String)
+- produces - accept type for response, support: application/json, application/xml, application/x-www-form-urlencoded (String)
 
 HEAD method supports argument macros:
-- #[segment] - maps method arguments to path segments
-- #[query] - maps method arguments to query parameters
-- #[header] - maps method arguments to request headers
-- #[body] - maps method arguments to request body
+- #[segment] - maps method arguments to path segments (simple types, String)
+- #[query] - maps method arguments to query parameters (simple types, String)
+- #[header] - maps method arguments to request headers (simple types, String)
+- #[body] - maps method arguments to request body (object implemented #[data_transfer])
+- #[placeholder] - maps method arguments to request header placeholders
 
 Example:
 ```
@@ -163,15 +168,16 @@ pub fn head(attrs: TokenStream, item: TokenStream) -> TokenStream {
 
 /**
 A procedural macro for building an HTTP PATCH method of trait. It includes the following attributes:
-- path - a part of the URL path
-- consumes - content-type for request
-- produces - content-type for response
+- path - a part of the URL path (String)
+- consumes - content type for request, support: application/json, application/xml, application/x-www-form-urlencoded (String)
+- produces - accept type for response, support: application/json, application/xml, application/x-www-form-urlencoded (String)
 
 PATCH method supports argument macros:
-- #[segment] - maps method arguments to path segments
-- #[query] - maps method arguments to query parameters
-- #[header] - maps method arguments to request headers
-- #[body] - maps method arguments to request body
+- #[segment] - maps method arguments to path segments (simple types, String)
+- #[query] - maps method arguments to query parameters (simple types, String)
+- #[header] - maps method arguments to request headers (simple types, String)
+- #[body] - maps method arguments to request body (object implemented #[data_transfer])
+- #[placeholder] - maps method arguments to request header placeholders
 
 Example:
 ```
@@ -184,6 +190,22 @@ pub fn patch(attrs: TokenStream, item: TokenStream) -> TokenStream {
     parse_method(Method::PATCH, item, attrs)
 }
 
+/**
+A procedural macro for adding HTTP headers to a request. It includes the following attributes:
+- name - HTTP header name (String)
+- value - HTTP header value (String)
+- sensitive - sensitive HTTP header value (true/false)
+
+It also supports filling #[placeholder] into header values.
+
+Examples:
+```
+#[header(name = "Content-Type", value = "application/json")]
+#[header(name = "Authorization", value = "Bearer {token}", sensitive = true)]
+#[get(path = "/", consumes = "application/json", produces = "application/json")]
+fn get(&self, #[placeholder] token: &str) -> ClientixResult<ClientixResponse<String>>;
+```
+*/
 #[proc_macro_attribute]
 pub fn header(attrs: TokenStream, item: TokenStream) -> TokenStream {
     parse_header(item, attrs)
@@ -211,12 +233,15 @@ pub struct CreatedObjectResponse {
 #[proc_macro_attribute]
 pub fn data_transfer(_: TokenStream, item: TokenStream) -> TokenStream {
     let item = parse_macro_input!(item as ItemStruct);
+    let vis = item.vis.clone();
+    let ident = item.ident.clone();
+    let fields = item.fields.clone();
 
     // TODO: научить data_transfer использовать все возможности serde на максимум
     TokenStream::from(quote! {
         #[derive(clientix::prelude::serde::Serialize, clientix::prelude::serde::Deserialize, Debug, Clone)]
         #[serde(crate = "clientix::prelude::serde")]
-        #item
+        #vis struct #ident #fields
     })
 }
 

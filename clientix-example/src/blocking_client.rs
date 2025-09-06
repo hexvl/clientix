@@ -4,7 +4,7 @@ use crate::dto::{CreateObjectRequest, CreatedObjectResponse};
 
 #[clientix(url = "https://api.restful-api.dev")]
 pub trait BlockingExampleClient {
-
+    
     #[get(path = "/objects")]
     fn get_result_full_response_string(&self) -> ClientixResult<ClientixResponse<String>>;
 
