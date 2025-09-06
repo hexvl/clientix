@@ -1,9 +1,9 @@
 [workspace]
-package = { version = "0.1.2", categories = ["web-programming", "web-programming::http-client", "development-tools::procedural-macro-helpers"] }
+package = { version = "0.1.3", categories = ["web-programming", "web-programming::http-client", "development-tools::procedural-macro-helpers"] }
 members = ["clientix", "clientix-codegen", "clientix-core", "clientix-example"]
 resolver = "2"
 
 [workspace.dependencies]
-clientix = { path = "clientix", version = "0.1.2" }
-clientix-core = { path = "clientix-core", version = "0.1.2" }
-clientix-codegen = { path = "clientix-codegen", version = "0.1.2" }
+clientix = { path = "clientix", version = "0.1.3" }
+clientix-core = { path = "clientix-core", version = "0.1.3" }
+clientix-codegen = { path = "clientix-codegen", version = "0.1.3" }
