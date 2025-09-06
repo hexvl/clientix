@@ -3,7 +3,7 @@ members = ["clientix", "clientix-codegen", "clientix-core", "clientix-example"]
 resolver = "2"
 
 [workspace.package]
-version = "0.1.7"
+version = "0.1.8"
 categories = ["web-programming", "web-programming::http-client", "development-tools::procedural-macro-helpers"]
 authors = ["Vladislav Ovchinnikov <vladovchinnikov950@gmail.com>"]
 edition = "2021"
@@ -12,8 +12,9 @@ homepage = "https://github.com/hexvl/clientix"
 repository = "https://github.com/hexvl/clientix"
 readme = "README.md"
 license = "MIT OR Apache-2.0"
+keywords = ["api", "web-programming", "declarative", "proc-macro", "http-client"]
 
 [workspace.dependencies]
-clientix = { path = "clientix", version = "0.1.7" }
-clientix-core = { path = "clientix-core", version = "0.1.7" }
-clientix-codegen = { path = "clientix-codegen", version = "0.1.7" }
+clientix = { path = "clientix", version = "0.1.8" }
+clientix-core = { path = "clientix-core", version = "0.1.8" }
+clientix-codegen = { path = "clientix-codegen", version = "0.1.8" }

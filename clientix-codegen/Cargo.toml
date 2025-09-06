@@ -8,6 +8,7 @@ homepage.workspace = true
 repository.workspace = true
 readme.workspace = true
 license.workspace = true
+keywords.workspace = true
 
 name = "clientix-codegen"
 
