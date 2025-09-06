@@ -8,10 +8,10 @@ use clientix_core::prelude::reqwest::header::{ACCEPT, CONTENT_TYPE};
 use clientix_core::prelude::reqwest::Method;
 use arguments::ArgumentsConfig;
 use header::HeaderConfig;
-use return_kind::ReturnKind;
+use crate::method::output::OutputConfig;
 use crate::utils::throw_error;
 
-mod return_kind;
+pub mod output;
 pub mod header;
 pub mod segment;
 pub mod placeholder;
@@ -39,13 +39,15 @@ pub struct MethodConfig {
     async_supported: bool,
     dry_run: bool,
     arguments_config: ArgumentsConfig,
+    output_config: OutputConfig
 }
 
-impl From<TraitItemFn> for MethodConfig {
+impl MethodConfig {
 
-    fn from(item: TraitItemFn) -> Self {
+    pub fn create_by_item(item: TraitItemFn, async_supported: bool) -> Self {
         let mut method_attrs: MethodConfig = Default::default();
-
+        method_attrs.async_supported = async_supported;
+        
         let attributes = item.attrs.clone();
         method_attrs.parse_macros(HEADER_METHOD_MACRO, &attributes);
         method_attrs.parse_macros(GET_METHOD_MACRO, &attributes);
@@ -59,10 +61,6 @@ impl From<TraitItemFn> for MethodConfig {
         method_attrs
     }
 
-}
-
-impl MethodConfig {
-
     pub fn create(method: Method, item: TokenStream, attrs: TokenStream) -> Self {
         let mut method_config = MethodConfig::default();
         method_config.dry_run = true;
@@ -70,10 +68,6 @@ impl MethodConfig {
         method_config.parse_stream(method, TokenStream2::from(item), TokenStream2::from(attrs));
 
         method_config
-    }
-
-    pub fn set_async_supported(&mut self, async_supported: bool) {
-        self.async_supported = async_supported;
     }
 
     pub fn compile_declaration(&self) -> TokenStream2 {
@@ -100,7 +94,7 @@ impl MethodConfig {
         let compiled_headers = self.compile_headers();
         let compiled_queries = self.compile_queries();
         let compiled_body = self.compile_body();
-        let compiled_result = self.compile_result();
+        let compiled_result = self.compile_output();
         let compiled_method = self.compile_method();
 
         quote! {
@@ -132,11 +126,7 @@ impl MethodConfig {
     }
 
     fn compile_path(&self) -> TokenStream2 {
-        if let Some(path) = &self.path {
-            self.arguments_config.compile_segments(path)
-        } else {
-            quote!()
-        }
+        self.arguments_config.compile_segments(self.path.as_ref())
     }
 
     fn compile_headers(&self) -> TokenStream2 {
@@ -161,173 +151,8 @@ impl MethodConfig {
         self.arguments_config.compile_body(self.consumes)
     }
 
-    fn compile_result(&self) -> TokenStream2 {
-        let compiled_async_directive = self.compile_async();
-        let compiled_text_response = quote! {
-            #compiled_async_directive
-            .text()
-            #compiled_async_directive
-        };
-        let compiled_object_method = match self.produces {
-            Some(ContentType::ApplicationXml) => quote!{.xml()},
-            Some(ContentType::ApplicationXWwwFormUrlEncoded) => quote!{.urlencoded()},
-            Some(ContentType::TextHtml) => quote!{.text()},
-            _ => quote!{.json()},
-        };
-
-        let compiled_object_response = quote! {
-            #compiled_async_directive
-            #compiled_object_method
-            #compiled_async_directive
-        };
-
-        match ReturnKind::from(self.get_signature()) {
-            ReturnKind::Unit => quote! {;},
-            ReturnKind::ClientixResultOfResponseOfString => compiled_text_response,
-            ReturnKind::ClientixResultOfResponse => compiled_object_response,
-            ReturnKind::ClientixResultOfStreamOfString => {
-                if self.async_supported {
-                    quote! {
-                        .await
-                        .text_stream()
-                    }
-                } else {
-                    throw_error("Streams not supported for not async clients", self.dry_run);
-                    quote!()
-                }
-            },
-            ReturnKind::ClientixResultOfStream => {
-                if self.async_supported {
-                    quote! {
-                        .await
-                        .json_stream()
-                    }
-                } else {
-                    throw_error("Streams not supported for not async clients", self.dry_run);
-                    quote!()
-                }
-            },
-            ReturnKind::ClientixResultOfString => {
-                quote! {
-                    #compiled_text_response
-                    .map(|response| response.body())
-                }
-            }
-            ReturnKind::ClientixResult => {
-                quote! {
-                    #compiled_object_response
-                    .map(|response| response.body())
-                }
-            }
-            ReturnKind::OptionOfResponseOfString => {
-                quote! {
-                    #compiled_text_response
-                    .ok()
-                }
-            }
-            ReturnKind::OptionOfResponse => {
-                quote! {
-                    #compiled_object_response
-                    .ok()
-                }
-            }
-            ReturnKind::OptionOfStreamOfString => {
-                if self.async_supported {
-                    quote! {
-                        .await
-                        .text_stream()
-                        .ok()
-                    }
-                } else {
-                    throw_error("Streams not supported for not async clients", self.dry_run);
-                    quote!()
-                }
-            }
-            ReturnKind::OptionOfStream => {
-                if self.async_supported {
-                    quote! {
-                        .await
-                        .json_stream()
-                        .ok()
-                    }
-                } else {
-                    throw_error("Streams not supported for not async clients", self.dry_run);
-                    quote!()
-                }
-            }
-            ReturnKind::OptionOfString => {
-                quote! {
-                    #compiled_text_response
-                    .map(|response| response.body())
-                    .ok()
-                }
-            }
-            ReturnKind::Option => {
-                quote! {
-                    #compiled_object_response
-                    .map(|response| response.body())
-                    .ok()
-                }
-            }
-            ReturnKind::ClientixStreamOfString => {
-                if self.async_supported {
-                    quote! {
-                        .await
-                        .text_stream()
-                        .unwrap()
-                    }
-                } else {
-                    throw_error("Streams not supported for not async clients", self.dry_run);
-                    quote!()
-                }
-            }
-            ReturnKind::ClientixStream => {
-                if self.async_supported {
-                    quote! {
-                        .await
-                        .json_stream()
-                        .unwrap()
-                    }
-                } else {
-                    throw_error("Streams not supported for not async clients", self.dry_run);
-                    quote!()
-                }
-            }
-            ReturnKind::ClientixResponseOfString => {
-                quote! {
-                    #compiled_text_response
-                    .unwrap()
-                }
-            }
-            ReturnKind::ClientixResponse => {
-                quote! {
-                    #compiled_object_response
-                    .unwrap()
-                }
-            }
-            ReturnKind::String => {
-                quote! {
-                    #compiled_text_response
-                    .map(|response| response.body())
-                    .unwrap()
-                }
-            }
-            ReturnKind::Other => {
-                quote! {
-                    #compiled_object_response
-                    .map(|response| response.body())
-                    .unwrap()
-                }
-            }
-        }
-    }
-
-    fn compile_async(&self) -> TokenStream2 {
-        if self.async_supported {
-            quote! {.await}
-        } else {
-            quote! {}
-        }
+    fn compile_output(&self) -> TokenStream2 {
+        self.output_config.compile()
     }
 
     fn parse_stream(&mut self, method: Method, item: TokenStream2, attrs: TokenStream2) {
@@ -384,6 +209,7 @@ impl MethodConfig {
             });
 
         self.signature = Some(item.sig.clone());
+        self.output_config = OutputConfig::new(item.sig.output, self.async_supported, self.produces, self.dry_run);
     }
 
     fn parse_method_attrs(&mut self, method: Method, attrs: TokenStream2) {
