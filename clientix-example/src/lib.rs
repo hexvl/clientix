@@ -93,7 +93,7 @@ mod tests {
     async fn async_get_result_full_response_string_test() {
         let client = AsyncExampleClient::new();
 
-        let result = client.get_result_full_response_string().await;
+        let result = client.get_result_full_response_string("test").await;
 
         match result {
             Ok(value) => println!("{:?}", value),
