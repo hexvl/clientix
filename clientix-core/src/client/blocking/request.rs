@@ -1,5 +1,4 @@
 use http::Method;
-use strfmt::strfmt;
 use crate::client::blocking::client::BlockingClient;
 use crate::client::blocking::response::BlockingResponseHandler;
 use crate::client::request::{ClientixRequestBuilder, RequestConfig};
@@ -43,9 +42,8 @@ impl BlockingRequest {
         if let Err(error) = self.result {
             return BlockingResponseHandler::new(Err(error));
         }
-
-        let method_path = strfmt(self.config.get_path(), self.config.get_path_segments()).expect("failed to format path");
-        let full_path = format!("{}{}", self.client.path, method_path);
+        
+        let full_path = format!("{}{}", self.client.path, self.config.get_path());
         let url = format!("{}{}", self.client.url, full_path);
 
         match self.client.client.lock() {

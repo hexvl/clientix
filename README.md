@@ -16,7 +16,7 @@ cargo add clientix
 ```
 And if you prefer to declare it explicitly in your Cargo.toml, just add it under the [dependencies] section:
 ```
-clientix = "0.0.4"
+clientix = "0.1.2"
 ```
 
 ## Examples
@@ -129,6 +129,7 @@ Note the #[body] macro on the post method argument - it’s required to map an o
 - #[segment] - maps method arguments to path segments
 - #[query] - maps method arguments to query parameters
 - #[header] - maps method arguments to request headers
+- #[placeholder] - maps method arguments to request header placeholders
 
 Future plans include expanding the argument macros to provide more flexible client configuration options.
 

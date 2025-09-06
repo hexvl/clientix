@@ -95,7 +95,6 @@ impl HeaderConfig {
 }
 
 pub fn parse_header(item: TokenStream, attrs: TokenStream) -> TokenStream {
-    let header_config = HeaderConfig::parse(TokenStream2::from(attrs), true);
-
+    HeaderConfig::parse(TokenStream2::from(attrs), true);
     TokenStream::from(item)
 }

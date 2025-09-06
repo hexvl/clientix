@@ -4,6 +4,7 @@ use syn::{Attribute, FnArg, LitStr, Meta, Signature, TraitItemFn};
 use syn::__private::TokenStream2;
 use syn::parse::Parser;
 use clientix_core::core::headers::content_type::ContentType;
+use clientix_core::prelude::reqwest::header::{ACCEPT, CONTENT_TYPE};
 use clientix_core::prelude::reqwest::Method;
 use crate::header::HeaderConfig;
 use crate::return_kind::ReturnKind;
@@ -17,7 +18,7 @@ const HEAD_METHOD_MACRO: &str = "head";
 const PATCH_METHOD_MACRO: &str = "patch";
 const HEADER_METHOD_MACRO: &str = "header";
 
-#[derive(Clone)]
+#[derive(Clone, Default)]
 pub struct MethodArgumentsConfig {
     request_segment_args: Vec<Box<syn::Pat>>,
     request_query_args: Vec<Box<syn::Pat>>,
@@ -26,14 +27,14 @@ pub struct MethodArgumentsConfig {
     request_body_arg: Option<Box<syn::Pat>>,
 }
 
-#[derive(Clone)]
+#[derive(Clone, Default)]
 pub struct MethodConfig {
     attributes: Vec<Attribute>,
     signature: Option<Signature>,
     method: Option<Method>,
     path: Option<String>,
-    consumes: ContentType,
-    produces: ContentType,
+    consumes: Option<ContentType>,
+    produces: Option<ContentType>,
     headers: Vec<HeaderConfig>,
     async_supported: bool,
     dry_run: bool,
@@ -43,24 +44,7 @@ pub struct MethodConfig {
 impl From<TraitItemFn> for MethodConfig {
 
     fn from(item: TraitItemFn) -> Self {
-        let mut method_attrs = MethodConfig {
-            attributes: Vec::new(),
-            signature: None,
-            method: None,
-            path: None,
-            consumes: ContentType::ApplicationJson,
-            produces: ContentType::ApplicationJson,
-            headers: Default::default(),
-            async_supported: false,
-            dry_run: false,
-            arguments_config: MethodArgumentsConfig {
-                request_segment_args: vec![],
-                request_query_args: vec![],
-                request_header_args: vec![],
-                request_placeholder_arg: vec![],
-                request_body_arg: None
-            }
-        };
+        let mut method_attrs: MethodConfig = Default::default();
 
         let attributes = item.attrs.clone();
         method_attrs.parse_macros(HEADER_METHOD_MACRO, &attributes);
@@ -80,24 +64,8 @@ impl From<TraitItemFn> for MethodConfig {
 impl MethodConfig {
 
     pub fn create(method: Method, item: TokenStream, attrs: TokenStream) -> Self {
-        let mut method_config = MethodConfig {
-            attributes: Vec::new(),
-            signature: None,
-            method: None,
-            path: None,
-            consumes: ContentType::ApplicationJson,
-            produces: ContentType::ApplicationJson,
-            headers: Default::default(),
-            async_supported: false,
-            dry_run: true,
-            arguments_config: MethodArgumentsConfig {
-                request_segment_args: vec![],
-                request_query_args: vec![],
-                request_header_args: vec![],
-                request_placeholder_arg: vec![],
-                request_body_arg: None
-            }
-        };
+        let mut method_config = MethodConfig::default();
+        method_config.dry_run = true;
 
         method_config.parse_stream(method, TokenStream2::from(item), TokenStream2::from(attrs));
 
@@ -128,8 +96,7 @@ impl MethodConfig {
     pub fn compile_definition(&self) -> TokenStream2 {
         let sig = self.get_signature();
 
-        let method_path = self.path.clone().unwrap_or(String::new());
-        let compiled_segments = self.compile_segments();
+        let compiled_path = self.compile_path();
         let compiled_headers = self.compile_headers();
         let compiled_queries = self.compile_queries();
         let compiled_body = self.compile_body();
@@ -142,8 +109,7 @@ impl MethodConfig {
                 
                 self.client
                     #compiled_method
-                    .path(#method_path)
-                    #compiled_segments
+                    #compiled_path
                     #compiled_headers
                     #compiled_queries
                     #compiled_body
@@ -165,43 +131,62 @@ impl MethodConfig {
         })
     }
 
-    fn compile_segments(&self) -> TokenStream2 {
-        if self.arguments_config.request_segment_args.is_empty() {
-            quote! {}
-        } else {
-            let mut stream = TokenStream2::new();
-            for segment_variable in self.arguments_config.request_segment_args.iter() {
-                let segment_id = format!("{}", quote! {#segment_variable});
-                stream.extend(quote! {
-                    .path_segment(#segment_id, #segment_variable)
+    fn compile_path(&self) -> TokenStream2 {
+        if let Some(path) = &self.path {
+            if self.arguments_config.request_segment_args.is_empty() {
+                quote!(.path(#path))
+            } else {
+                let mut stream = TokenStream2::from(quote! {
+                     let mut arguments = std::collections::HashMap::new();
                 });
-            }
 
-            stream
+                for segment_variable in self.arguments_config.request_segment_args.iter() {
+                    let segment_id = format!("{}", quote! {#segment_variable});
+                    stream.extend(quote! {
+                        arguments.insert(#segment_id.to_string(), #segment_variable.to_string());
+                    });
+                }
+
+                stream.extend(quote! {
+                    clientix::prelude::strfmt::strfmt(#path, &arguments).expect("failed to format header").as_str()
+                });
+
+                quote!(.path({#stream}))
+            }
+        } else {
+            quote!()
         }
     }
 
     fn compile_headers(&self) -> TokenStream2 {
+        let mut stream = TokenStream2::new();
         if self.arguments_config.request_header_args.is_empty() && self.headers.is_empty() {
-            quote! {}
+            stream.extend(quote! {})
         } else {
-            let mut stream = TokenStream2::new();
             for header_variable in self.arguments_config.request_header_args.iter() {
                 let header_id = format!("{}", quote! {#header_variable});
-                stream.extend(quote! {
-                    .header(#header_id, #header_variable)
-                })
+                stream.extend(self.compile_header(header_id, header_variable));
             }
 
             for header in self.headers.iter() {
-                let compiled_header = header.compile_header(self.arguments_config.request_placeholder_arg.clone());
-                stream.extend(quote! {
-                    #compiled_header
-                })
+                stream.extend(header.compile_header(self.arguments_config.request_placeholder_arg.clone()))
             }
 
-            stream
         }
+
+        if let Some(content_type) = self.consumes {
+            stream.extend(self.compile_header(CONTENT_TYPE.to_string(), content_type.to_string()));
+        }
+
+        if let Some(accept_type) = self.produces {
+            stream.extend(self.compile_header(ACCEPT.to_string(), accept_type.to_string()));
+        }
+
+        stream
+    }
+
+    fn compile_header<N, V>(&self, name: N, value: V) -> TokenStream2 where N: ToTokens, V: ToTokens {
+        quote!(.header(#name, #value.to_string().as_str()))
     }
 
     fn compile_queries(&self) -> TokenStream2 {
@@ -210,19 +195,23 @@ impl MethodConfig {
         } else {
             let mut stream = TokenStream2::new();
             for query_variable in self.arguments_config.request_query_args.iter() {
-                let query_id = format!("{}", quote! {#query_variable});
-                stream.extend(quote! {
-                    .query(#query_id, #query_variable)
-                })
+                stream.extend(self.compile_query(format!("{}", quote! {#query_variable}), query_variable));
             }
 
             stream
         }
     }
 
+    fn compile_query<N, V>(&self, name: N, value: V) -> TokenStream2 where N: ToTokens, V: ToTokens {
+        quote!(.query(#name, #value.to_string().as_str()))
+    }
+
     fn compile_body(&self) -> TokenStream2 {
         if let Some(body_variable) = &self.arguments_config.request_body_arg {
-            let content_type: String = self.consumes.into();
+            let content_type: String = match self.consumes {
+                Some(value) => value.to_string(),
+                None => ContentType::ApplicationJson.to_string()
+            };
             quote! {
                 .body(#body_variable, #content_type.to_string().try_into().unwrap())
             }
@@ -239,10 +228,10 @@ impl MethodConfig {
             #compiled_async_directive
         };
         let compiled_object_method = match self.produces {
-            ContentType::ApplicationJson => quote!{.json()},
-            ContentType::ApplicationXml => quote!{.xml()},
-            ContentType::ApplicationXWwwFormUrlEncoded => quote!{.urlencoded()},
-            ContentType::TextHtml => quote!{.text()}
+            Some(ContentType::ApplicationXml) => quote!{.xml()},
+            Some(ContentType::ApplicationXWwwFormUrlEncoded) => quote!{.urlencoded()},
+            Some(ContentType::TextHtml) => quote!{.text()},
+            _ => quote!{.json()},
         };
 
         let compiled_object_response = quote! {
@@ -419,7 +408,7 @@ impl MethodConfig {
             .map(|attr_expr| match &attr_expr.meta {
                 Meta::Path(value) => (value, TokenStream2::new(), attr_expr),
                 Meta::List(value) => (&value.path, value.tokens.to_token_stream(), attr_expr),
-                Meta::NameValue(_) => panic!("unexpected attribute syntax"),
+                Meta::NameValue(value) => (&value.path, TokenStream2::new(), attr_expr),
             })
             .filter(|(path, _, _)| path.is_ident(macro_name))
             .for_each(|(_, tokens, attr_expr)| {
@@ -495,7 +484,7 @@ impl MethodConfig {
                 ref path if path.is_ident("consumes") => {
                     match meta.value()?.parse::<LitStr>()?.value().try_into() {
                         Ok(consumes) => {
-                            self.consumes = consumes;
+                            self.consumes = Some(consumes);
                         }
                         Err(_) => {
                             throw_error("invalid content-type for consumes", self.dry_run);
@@ -507,7 +496,7 @@ impl MethodConfig {
                 ref path if path.is_ident("produces") => {
                     match meta.value()?.parse::<LitStr>()?.value().try_into() {
                         Ok(produces) => {
-                            self.produces = produces;
+                            self.produces = Some(produces);
                         }
                         Err(_) => {
                             throw_error("invalid content-type for produces", self.dry_run);

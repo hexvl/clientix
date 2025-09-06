@@ -199,8 +199,8 @@ impl ClientConfig {
 
         for trait_method in trait_methods {
             let mut method = MethodConfig::from(trait_method.clone());
+            
             method.set_async_supported(self.async_supported);
-
             self.methods.push(method);
         }
     }
