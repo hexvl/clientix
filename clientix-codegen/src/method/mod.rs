@@ -6,9 +6,18 @@ use syn::parse::Parser;
 use clientix_core::core::headers::content_type::ContentType;
 use clientix_core::prelude::reqwest::header::{ACCEPT, CONTENT_TYPE};
 use clientix_core::prelude::reqwest::Method;
-use crate::header::HeaderConfig;
-use crate::return_kind::ReturnKind;
+use arguments::ArgumentsConfig;
+use header::HeaderConfig;
+use return_kind::ReturnKind;
 use crate::utils::throw_error;
+
+mod return_kind;
+pub mod header;
+pub mod segment;
+pub mod placeholder;
+pub mod body;
+pub mod query;
+mod arguments;
 
 const GET_METHOD_MACRO: &str = "get";
 const POST_METHOD_MACRO: &str = "post";
@@ -17,15 +26,6 @@ const DELETE_METHOD_MACRO: &str = "delete";
 const HEAD_METHOD_MACRO: &str = "head";
 const PATCH_METHOD_MACRO: &str = "patch";
 const HEADER_METHOD_MACRO: &str = "header";
-
-#[derive(Clone, Default)]
-pub struct MethodArgumentsConfig {
-    request_segment_args: Vec<Box<syn::Pat>>,
-    request_query_args: Vec<Box<syn::Pat>>,
-    request_header_args: Vec<Box<syn::Pat>>,
-    request_placeholder_arg: Vec<Box<syn::Pat>>,
-    request_body_arg: Option<Box<syn::Pat>>,
-}
 
 #[derive(Clone, Default)]
 pub struct MethodConfig {
@@ -38,7 +38,7 @@ pub struct MethodConfig {
     headers: Vec<HeaderConfig>,
     async_supported: bool,
     dry_run: bool,
-    arguments_config: MethodArgumentsConfig,
+    arguments_config: ArgumentsConfig,
 }
 
 impl From<TraitItemFn> for MethodConfig {
@@ -133,91 +133,32 @@ impl MethodConfig {
 
     fn compile_path(&self) -> TokenStream2 {
         if let Some(path) = &self.path {
-            if self.arguments_config.request_segment_args.is_empty() {
-                quote!(.path(#path))
-            } else {
-                let mut stream = TokenStream2::from(quote! {
-                     let mut arguments = std::collections::HashMap::new();
-                });
-
-                for segment_variable in self.arguments_config.request_segment_args.iter() {
-                    let segment_id = format!("{}", quote! {#segment_variable});
-                    stream.extend(quote! {
-                        arguments.insert(#segment_id.to_string(), #segment_variable.to_string());
-                    });
-                }
-
-                stream.extend(quote! {
-                    clientix::prelude::strfmt::strfmt(#path, &arguments).expect("failed to format header").as_str()
-                });
-
-                quote!(.path({#stream}))
-            }
+            self.arguments_config.compile_segments(path)
         } else {
             quote!()
         }
     }
 
     fn compile_headers(&self) -> TokenStream2 {
-        let mut stream = TokenStream2::new();
-        if self.arguments_config.request_header_args.is_empty() && self.headers.is_empty() {
-            stream.extend(quote! {})
-        } else {
-            for header_variable in self.arguments_config.request_header_args.iter() {
-                let header_id = format!("{}", quote! {#header_variable});
-                stream.extend(self.compile_header(header_id, header_variable));
-            }
-
-            for header in self.headers.iter() {
-                stream.extend(header.compile_header(self.arguments_config.request_placeholder_arg.clone()))
-            }
-
-        }
+        let mut stream = self.arguments_config.compile_headers();
 
         if let Some(content_type) = self.consumes {
-            stream.extend(self.compile_header(CONTENT_TYPE.to_string(), content_type.to_string()));
+            stream.extend(HeaderConfig::new(Some(CONTENT_TYPE.to_string()), Some(content_type.to_string())).compile());
         }
 
         if let Some(accept_type) = self.produces {
-            stream.extend(self.compile_header(ACCEPT.to_string(), accept_type.to_string()));
+            stream.extend(HeaderConfig::new(Some(ACCEPT.to_string()), Some(accept_type.to_string())).compile());
         }
 
         stream
     }
 
-    fn compile_header<N, V>(&self, name: N, value: V) -> TokenStream2 where N: ToTokens, V: ToTokens {
-        quote!(.header(#name, #value.to_string().as_str()))
-    }
-
     fn compile_queries(&self) -> TokenStream2 {
-        if self.arguments_config.request_query_args.is_empty() {
-            quote! {}
-        } else {
-            let mut stream = TokenStream2::new();
-            for query_variable in self.arguments_config.request_query_args.iter() {
-                stream.extend(self.compile_query(format!("{}", quote! {#query_variable}), query_variable));
-            }
-
-            stream
-        }
-    }
-
-    fn compile_query<N, V>(&self, name: N, value: V) -> TokenStream2 where N: ToTokens, V: ToTokens {
-        quote!(.query(#name, #value.to_string().as_str()))
+        self.arguments_config.compile_queries()
     }
 
     fn compile_body(&self) -> TokenStream2 {
-        if let Some(body_variable) = &self.arguments_config.request_body_arg {
-            let content_type: String = match self.consumes {
-                Some(value) => value.to_string(),
-                None => ContentType::ApplicationJson.to_string()
-            };
-            quote! {
-                .body(#body_variable, #content_type.to_string().try_into().unwrap())
-            }
-        } else {
-            quote! {}
-        }
+        self.arguments_config.compile_body(self.consumes)
     }
 
     fn compile_result(&self) -> TokenStream2 {
@@ -239,7 +180,7 @@ impl MethodConfig {
             #compiled_object_method
             #compiled_async_directive
         };
-        
+
         match ReturnKind::from(self.get_signature()) {
             ReturnKind::Unit => quote! {;},
             ReturnKind::ClientixResultOfResponseOfString => compiled_text_response,
@@ -438,36 +379,8 @@ impl MethodConfig {
                 FnArg::Typed(arg_type) => Some(arg_type),
             })
             .for_each(|arg_type| {
-                let mut attrs = Vec::new();
-                arg_type.attrs.iter().for_each(|attr| {
-                    match attr.path() {
-                        ref attr if attr.is_ident("segment") => {
-                            // TODO: очень не гибко, добавить возможность задавать алиас для сегмента пути
-                            self.arguments_config.request_segment_args.push(arg_type.pat.clone());
-                        },
-                        ref attr if attr.is_ident("query") => {
-                            // TODO: очень не гибко, добавить возможность задавать алиас для параметра запроса
-                            self.arguments_config.request_query_args.push(arg_type.pat.clone());
-                        }
-                        ref attr if attr.is_ident("header") => {
-                            // TODO: сделать отдельное определение для авторизационных заголовков по типу
-                            // TODO: очень не гибко, добавить возможность задавать алиас для заголовка
-                            self.arguments_config.request_header_args.push(arg_type.pat.clone());
-                        }
-                        ref attr if attr.is_ident("placeholder") => {
-                            self.arguments_config.request_placeholder_arg.push(arg_type.pat.clone());
-                        }
-                        ref attr if attr.is_ident("body") => {
-                            match self.arguments_config.request_body_arg {
-                                None => self.arguments_config.request_body_arg = Some(arg_type.pat.clone()),
-                                Some(_) => throw_error("multiple body arg", self.dry_run)
-                            }
-                        }
-                        _ => attrs.push(attr.clone()),
-                    }
-                });
-
-                arg_type.attrs = attrs;
+                self.arguments_config = ArgumentsConfig::parse(arg_type, self.dry_run);
+                arg_type.attrs = self.arguments_config.other_args().clone();
             });
 
         self.signature = Some(item.sig.clone());
@@ -518,7 +431,7 @@ impl MethodConfig {
     }
 
     fn parse_header_attrs(&mut self, attrs: TokenStream2) {
-        let header_config = HeaderConfig::parse(attrs, false);
+        let header_config = HeaderConfig::parse_stream(attrs, false);
         self.headers.push(header_config);
     }
 
