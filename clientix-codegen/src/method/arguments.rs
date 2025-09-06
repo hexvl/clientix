@@ -19,6 +19,7 @@ pub struct ArgumentsConfig {
     other_args: Vec<Attribute>
 }
 
+#[allow(dead_code)]
 impl ArgumentsConfig {
 
     pub fn segments(&self) -> &Vec<SegmentConfig> {

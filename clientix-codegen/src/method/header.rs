@@ -1,4 +1,3 @@
-use proc_macro::TokenStream;
 use quote::quote;
 use syn::__private::TokenStream2;
 use syn::parse::Parser;
@@ -108,9 +107,4 @@ impl HeaderConfig {
         }
     }
 
-}
-
-pub fn parse_header(item: TokenStream, attrs: TokenStream) -> TokenStream {
-    HeaderConfig::parse_stream(TokenStream2::from(attrs), true);
-    TokenStream::from(item)
 }

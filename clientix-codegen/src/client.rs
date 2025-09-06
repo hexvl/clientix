@@ -1,10 +1,9 @@
-use crate::method::MethodConfig;
-
 use proc_macro::TokenStream;
 use quote::quote;
 use syn::{Ident, ItemTrait, TraitItem, LitStr, LitBool, Visibility};
 use syn::__private::{Span, TokenStream2};
 use syn::parse::Parser;
+use crate::method::MethodConfig;
 
 #[derive(Clone)]
 pub struct ClientConfig {

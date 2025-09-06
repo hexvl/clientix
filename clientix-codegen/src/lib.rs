@@ -7,7 +7,7 @@ use quote::quote;
 use syn::{parse_macro_input, ItemStruct};
 use clientix_core::prelude::reqwest::Method;
 use crate::client::parse_client;
-use method::header::parse_header;
+use crate::method::parse_header;
 use crate::method::parse_method;
 
 /**
