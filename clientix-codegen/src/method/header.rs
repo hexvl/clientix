@@ -5,7 +5,7 @@ use syn::{LitBool, LitStr, PatType};
 use crate::method::placeholder::PlaceholderConfig;
 use crate::utils::throw_error;
 
-#[derive(Clone, Default)]
+#[derive(Clone, Default, Debug)]
 pub struct HeaderConfig {
     argument: Option<Box<syn::Pat>>,
     name: Option<String>,

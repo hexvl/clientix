@@ -4,7 +4,7 @@ use syn::{LitStr, PatType};
 use syn::parse::Parser;
 use crate::utils::throw_error;
 
-#[derive(Clone, Default)]
+#[derive(Clone, Default, Debug)]
 pub struct QueryConfig {
     argument: Option<Box<syn::Pat>>,
     name: Option<String>,

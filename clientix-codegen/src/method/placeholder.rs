@@ -4,7 +4,7 @@ use syn::{PatType};
 use syn::parse::Parser;
 use crate::utils::throw_error;
 
-#[derive(Clone, Default)]
+#[derive(Clone, Default, Debug)]
 pub struct PlaceholderConfig {
     argument: Option<Box<syn::Pat>>,
     dry_run: bool,

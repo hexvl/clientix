@@ -92,7 +92,7 @@ impl MethodConfig {
         quote! {
             pub #sig {
                 use clientix::client::request::ClientixRequestBuilder;
-                
+
                 self.client
                     #compiled_method
                     #compiled_path
@@ -189,16 +189,15 @@ impl MethodConfig {
     }
 
     fn parse_args(&mut self, mut item: TraitItemFn) {
+        self.arguments_config = ArgumentsConfig::new(self.dry_run);
+
         item.sig.inputs
             .iter_mut()
             .filter_map(|arg| match arg {
                 FnArg::Receiver(_) => None,
                 FnArg::Typed(arg_type) => Some(arg_type),
             })
-            .for_each(|arg_type| {
-                self.arguments_config = ArgumentsConfig::parse(arg_type, self.dry_run);
-                arg_type.attrs = self.arguments_config.other_args().clone();
-            });
+            .for_each(|arg_type| self.arguments_config.add(arg_type));
 
         self.signature = Some(item.sig.clone());
         self.output_config = OutputConfig::new(item.sig.output, self.async_supported, self.produces, self.dry_run);

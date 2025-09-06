@@ -5,7 +5,7 @@ use syn::parse::Parser;
 use clientix_core::core::headers::content_type::ContentType;
 use crate::utils::throw_error;
 
-#[derive(Clone, Default)]
+#[derive(Clone, Default, Debug)]
 pub struct BodyConfig {
     argument: Option<Box<syn::Pat>>,
     dry_run: bool,

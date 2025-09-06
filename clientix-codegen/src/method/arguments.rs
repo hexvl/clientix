@@ -1,5 +1,5 @@
 use quote::{quote, ToTokens};
-use syn::{Attribute, Meta, PatType};
+use syn::{Meta, PatType};
 use syn::__private::TokenStream2;
 use clientix_core::core::headers::content_type::ContentType;
 use crate::method::body::BodyConfig;
@@ -9,19 +9,30 @@ use crate::method::query::QueryConfig;
 use crate::method::segment::SegmentConfig;
 use crate::utils::throw_error;
 
-#[derive(Clone, Default)]
+#[derive(Clone, Default, Debug)]
 pub struct ArgumentsConfig {
     segments: Vec<SegmentConfig>,
     queries: Vec<QueryConfig>,
     headers: Vec<HeaderConfig>,
     placeholders: Vec<PlaceholderConfig>,
     body: Option<BodyConfig>,
-    other_args: Vec<Attribute>
+    dry_run: bool,
 }
 
 #[allow(dead_code)]
 impl ArgumentsConfig {
 
+    pub fn new(dry_run: bool) -> Self {
+        Self {
+            segments: vec![],
+            queries: vec![],
+            headers: vec![],
+            placeholders: vec![],
+            body: None,
+            dry_run,
+        }
+    }
+    
     pub fn segments(&self) -> &Vec<SegmentConfig> {
         &self.segments
     }
@@ -42,47 +53,43 @@ impl ArgumentsConfig {
         self.body.as_ref()
     }
 
-    pub fn other_args(&self) -> &Vec<Attribute> {
-        &self.other_args
-    }
-
-    pub fn parse(pat_type: &PatType, dry_run: bool) -> Self {
-        let mut arguments = Self::default();
-
+    pub fn add(&mut self, pat_type: &mut PatType) {
+        let mut not_processed_attrs = Vec::new();
+        
         pat_type.attrs.clone().into_iter().map(|attr_expr| match attr_expr.meta.clone() {
             Meta::Path(value) => (value, TokenStream2::new(), attr_expr),
             Meta::List(value) => (value.path, value.tokens.to_token_stream(), attr_expr),
             Meta::NameValue(value) => (value.path, TokenStream2::new(), attr_expr),
-        }).for_each(|(path, tokens, attr_expr)| {
+        }).for_each(|(path, attrs, attr_expr)| {
             match path {
                 ref path if path.is_ident("segment") => {
-                    arguments.segments.push(SegmentConfig::parse_argument(pat_type, tokens, dry_run));
+                    self.segments.push(SegmentConfig::parse_argument(pat_type, attrs, self.dry_run));
                 },
                 ref path if path.is_ident("query") => {
-                    arguments.queries.push(QueryConfig::parse_argument(pat_type, tokens, dry_run));
+                    self.queries.push(QueryConfig::parse_argument(pat_type, attrs, self.dry_run));
                 },
                 ref path if path.is_ident("header") => {
-                    arguments.headers.push(HeaderConfig::parse_argument(pat_type, tokens, dry_run));
+                    self.headers.push(HeaderConfig::parse_argument(pat_type, attrs, self.dry_run));
                 },
                 ref path if path.is_ident("placeholder") => {
-                    arguments.placeholders.push(PlaceholderConfig::parse_argument(pat_type, tokens, dry_run));
+                    self.placeholders.push(PlaceholderConfig::parse_argument(pat_type, attrs, self.dry_run));
                 },
                 ref path if path.is_ident("body") => {
-                    match arguments.body {
-                        None => arguments.body = Some(BodyConfig::parse_argument(pat_type, tokens, dry_run)),
-                        Some(_) => throw_error("multiple body arg", dry_run)
+                    match self.body {
+                        None => self.body = Some(BodyConfig::parse_argument(pat_type, attrs, self.dry_run)),
+                        Some(_) => throw_error("multiple body arg", self.dry_run),
                     }
                 },
                 ref path if path.is_ident("args") => {
                     todo!()
                 }
                 _ => {
-                    arguments.other_args.push(attr_expr);
+                    not_processed_attrs.push(attr_expr);
                 }
             }
         });
-
-        arguments
+        
+        pat_type.attrs = not_processed_attrs;
     }
 
     pub fn compile_segments(&self, path: Option<&String>) -> TokenStream2 {
