@@ -84,23 +84,27 @@ impl ArgumentsConfig {
         arguments
     }
 
-    pub fn compile_segments(&self, path: &str) -> TokenStream2 {
-        if self.segments().is_empty() {
-            quote!(.path(#path))
-        } else {
-            let mut stream = TokenStream2::from(quote! {
-                let mut arguments = std::collections::HashMap::new();
-            });
+    pub fn compile_segments(&self, path: Option<&String>) -> TokenStream2 {
+        if let Some(path) = path {
+            if self.segments().is_empty() {
+                quote!(.path(#path))
+            } else {
+                let mut stream = TokenStream2::from(quote! {
+                    let mut arguments = std::collections::HashMap::new();
+                });
 
-            for segment_variable in self.segments().iter() {
-                stream.extend(segment_variable.compile());
+                for segment_variable in self.segments().iter() {
+                    stream.extend(segment_variable.compile());
+                }
+
+                stream.extend(quote! {
+                    clientix::prelude::strfmt::strfmt(#path, &arguments).expect("failed to format header").as_str()
+                });
+
+                quote!(.path({#stream}))
             }
-
-            stream.extend(quote! {
-                clientix::prelude::strfmt::strfmt(#path, &arguments).expect("failed to format header").as_str()
-            });
-
-            quote!(.path({#stream}))
+        } else {
+            quote!()
         }
     }
 

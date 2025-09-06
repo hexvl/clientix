@@ -198,10 +198,7 @@ impl ClientConfig {
         }).collect::<Vec<_>>();
 
         for trait_method in trait_methods {
-            let mut method = MethodConfig::from(trait_method.clone());
-            
-            method.set_async_supported(self.async_supported);
-            self.methods.push(method);
+            self.methods.push(MethodConfig::create_by_item(trait_method.clone(), self.async_supported));
         }
     }
 
