@@ -81,7 +81,7 @@ impl ArgumentsConfig {
                     }
                 },
                 ref path if path.is_ident("args") => {
-                    todo!()
+                    self.parse_args_struct(pat_type, self.dry_run);
                 }
                 _ => {
                     not_processed_attrs.push(attr_expr);
@@ -148,6 +148,18 @@ impl ArgumentsConfig {
         } else {
             quote! {}
         }
+    }
+
+    
+    fn parse_args_struct(&self, _pat_type: &mut PatType, _dry_run: bool) -> TokenStream2 {
+        // TODO: реализовать парсинг структуры.
+        //  Реализацию можно выполнить через создание соответствующей структуры,
+        //  которая сама лично парсит свои атрибуты на полях и имплементирует соответствующие
+        //  геттеры по полям. В результате эти геттеры должны быть вызваны в местах задавания
+        //  соответствующих переменных. Возможно, потребуется доработка clientix-core,
+        //  но лучше постараться избежать этого
+
+        TokenStream2::from(quote! {})
     }
 
 }

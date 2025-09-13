@@ -6,4 +6,4 @@ pub mod stream;
 pub use client::*;
 pub use request::*;
 pub use response::*;
-pub use stream::*;
+pub use bytes::*;

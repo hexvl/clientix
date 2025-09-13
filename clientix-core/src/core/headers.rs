@@ -7,7 +7,8 @@ pub mod content_type {
         ApplicationJson,
         ApplicationXml,
         ApplicationXWwwFormUrlEncoded,
-        TextHtml
+        TextHtml,
+        TextEventStream
     }
 
     impl TryFrom<String> for ContentType {
@@ -19,6 +20,7 @@ pub mod content_type {
                 "application/xml" => Ok(ContentType::ApplicationXml),
                 "application/x-www-form-urlencoded" => Ok(ContentType::ApplicationXWwwFormUrlEncoded),
                 "text/html" => Ok(ContentType::TextHtml),
+                "text/event-bytes" => Ok(ContentType::TextEventStream),
                 _ => Err(())
             }
         }
@@ -27,11 +29,13 @@ pub mod content_type {
     impl Display for ContentType {
         fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
             let str = match self {
-                ContentType::ApplicationJson => "application/json".to_string(),
-                ContentType::ApplicationXml => "application/xml".to_string(),
-                ContentType::ApplicationXWwwFormUrlEncoded => "application/x-www-form-urlencoded".to_string(),
-                ContentType::TextHtml => "text/html".to_string(),
+                ContentType::ApplicationJson => "application/json",
+                ContentType::ApplicationXml => "application/xml",
+                ContentType::ApplicationXWwwFormUrlEncoded => "application/x-www-form-urlencoded",
+                ContentType::TextHtml => "text/html",
+                ContentType::TextEventStream => "text/event-bytes"
             };
+            
             write!(f, "{}", str)
         }
     }

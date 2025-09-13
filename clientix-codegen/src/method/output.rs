@@ -7,6 +7,7 @@ use crate::utils::throw_error;
 const CLIENTIX_RESULT_TYPE: &str = "ClientixResult";
 const CLIENTIX_RESPONSE_TYPE: &str = "ClientixResponse";
 const CLIENTIX_STREAM_TYPE: &str = "ClientixStream";
+const CLIENTIX_SSE_STREAM_TYPE: &str = "ClientixSSEStream";
 const OPTION_TYPE: &str = "Option";
 const STRING_TYPE: &str = "String";
 
@@ -16,17 +17,20 @@ pub enum ReturnKind {
     Unit,
     ClientixResultOfResponseOfString,
     ClientixResultOfResponse,
-    ClientixResultOfStreamOfString,
+    ClientixResultOfSSEStreamOfString,
+    ClientixResultOfSSEStream,
     ClientixResultOfStream,
     ClientixResultOfString,
     ClientixResult,
     OptionOfResponseOfString,
     OptionOfResponse,
-    OptionOfStreamOfString,
+    OptionOfSSEStreamOfString,
+    OptionOfSSEStream,
     OptionOfStream,
     OptionOfString,
     Option,
-    ClientixStreamOfString,
+    ClientixSSEStreamOfString,
+    ClientixSSEStream,
     ClientixStream,
     ClientixResponseOfString,
     ClientixResponse,
@@ -58,17 +62,20 @@ impl From<ReturnType> for ReturnKind {
                 match (first_segment_ident.as_str(), second_segment_ident.as_str(), third_segment_ident.as_str()) {
                     (CLIENTIX_RESULT_TYPE, CLIENTIX_RESPONSE_TYPE, STRING_TYPE) => ReturnKind::ClientixResultOfResponseOfString,
                     (CLIENTIX_RESULT_TYPE, CLIENTIX_RESPONSE_TYPE, _) => ReturnKind::ClientixResultOfResponse,
-                    (CLIENTIX_RESULT_TYPE, CLIENTIX_STREAM_TYPE, STRING_TYPE) => ReturnKind::ClientixResultOfStreamOfString,
+                    (CLIENTIX_RESULT_TYPE, CLIENTIX_SSE_STREAM_TYPE, STRING_TYPE) => ReturnKind::ClientixResultOfSSEStreamOfString,
+                    (CLIENTIX_RESULT_TYPE, CLIENTIX_SSE_STREAM_TYPE, _) => ReturnKind::ClientixResultOfSSEStream,
                     (CLIENTIX_RESULT_TYPE, CLIENTIX_STREAM_TYPE, _) => ReturnKind::ClientixResultOfStream,
                     (CLIENTIX_RESULT_TYPE, STRING_TYPE, _) => ReturnKind::ClientixResultOfString,
                     (CLIENTIX_RESULT_TYPE, _, _) => ReturnKind::ClientixResult,
                     (OPTION_TYPE, CLIENTIX_RESPONSE_TYPE, STRING_TYPE) => ReturnKind::OptionOfResponseOfString,
                     (OPTION_TYPE, CLIENTIX_RESPONSE_TYPE, _) => ReturnKind::OptionOfResponse,
-                    (OPTION_TYPE, CLIENTIX_STREAM_TYPE, STRING_TYPE) => ReturnKind::OptionOfStreamOfString,
+                    (OPTION_TYPE, CLIENTIX_SSE_STREAM_TYPE, STRING_TYPE) => ReturnKind::OptionOfSSEStreamOfString,
+                    (OPTION_TYPE, CLIENTIX_SSE_STREAM_TYPE, _) => ReturnKind::OptionOfSSEStream,
                     (OPTION_TYPE, CLIENTIX_STREAM_TYPE, _) => ReturnKind::OptionOfStream,
                     (OPTION_TYPE, STRING_TYPE, _) => ReturnKind::OptionOfString,
                     (OPTION_TYPE, _, _) => ReturnKind::Option,
-                    (CLIENTIX_STREAM_TYPE, STRING_TYPE, _) => ReturnKind::ClientixStreamOfString,
+                    (CLIENTIX_SSE_STREAM_TYPE, STRING_TYPE, _) => ReturnKind::ClientixSSEStreamOfString,
+                    (CLIENTIX_SSE_STREAM_TYPE, _, _) => ReturnKind::ClientixSSEStream,
                     (CLIENTIX_STREAM_TYPE, _, _) => ReturnKind::ClientixStream,
                     (CLIENTIX_RESPONSE_TYPE, STRING_TYPE, _) => ReturnKind::ClientixResponseOfString,
                     (CLIENTIX_RESPONSE_TYPE, _, _) => ReturnKind::ClientixResponse,
@@ -93,18 +100,21 @@ impl OutputConfig {
             ReturnKind::Unit => self.compile_unit(),
             ReturnKind::ClientixResultOfResponseOfString => self.compile_text_response_result(),
             ReturnKind::ClientixResultOfResponse => self.compile_object_response_result(),
-            ReturnKind::ClientixResultOfStreamOfString => self.compile_text_stream_result(),
-            ReturnKind::ClientixResultOfStream => self.compile_object_stream_result(),
+            ReturnKind::ClientixResultOfSSEStreamOfString => self.compile_text_stream_result(),
+            ReturnKind::ClientixResultOfSSEStream => self.compile_object_stream_result(),
+            ReturnKind::ClientixResultOfStream => self.compile_bytes_stream_result(),
             ReturnKind::ClientixResultOfString => self.compile_text_result(),
             ReturnKind::ClientixResult => self.compile_object_result(),
             ReturnKind::OptionOfResponseOfString => self.compile_text_response_option(),
             ReturnKind::OptionOfResponse => self.compile_object_response_option(),
-            ReturnKind::OptionOfStreamOfString => self.compile_text_stream_option(),
-            ReturnKind::OptionOfStream => self.compile_object_stream_option(),
+            ReturnKind::OptionOfSSEStreamOfString => self.compile_text_stream_option(),
+            ReturnKind::OptionOfSSEStream => self.compile_object_stream_option(),
+            ReturnKind::OptionOfStream => self.compile_bytes_stream_option(),
             ReturnKind::OptionOfString => self.compile_text_option(),
             ReturnKind::Option => self.compile_object_option(),
-            ReturnKind::ClientixStreamOfString => self.compile_text_stream(),
-            ReturnKind::ClientixStream => self.compile_object_stream(),
+            ReturnKind::ClientixSSEStreamOfString => self.compile_text_stream(),
+            ReturnKind::ClientixSSEStream => self.compile_object_stream(),
+            ReturnKind::ClientixStream => self.compile_bytes_stream(),
             ReturnKind::ClientixResponseOfString => self.compile_text_response(),
             ReturnKind::ClientixResponse => self.compile_object_response(),
             ReturnKind::String => self.compile_text(),
@@ -164,7 +174,19 @@ impl OutputConfig {
             quote!()
         }
     }
-
+    
+    fn compile_bytes_stream_result(&self) -> TokenStream2 {
+        if self.async_supported {
+            quote! {
+                .await
+                .bytes_stream()
+            }
+        } else {
+            throw_error("Streams not supported for not async clients", self.dry_run);
+            quote!()
+        }
+    }
+    
     fn compile_text_result(&self) -> TokenStream2 {
         let compiled_text_response_result = self.compile_text_response_result();
         quote! {
@@ -223,6 +245,19 @@ impl OutputConfig {
         }
     }
 
+    fn compile_bytes_stream_option(&self) -> TokenStream2 {
+        if self.async_supported {
+            quote! {
+                .await
+                .bytes_stream()
+                .ok()
+            }
+        } else {
+            throw_error("Streams not supported for not async clients", self.dry_run);
+            quote!()
+        }
+    }
+    
     fn compile_text_option(&self) -> TokenStream2 {
         let compiled_text_response_result = self.compile_text_response_result();
         quote! {
@@ -259,6 +294,19 @@ impl OutputConfig {
             quote! {
                 .await
                 .json_stream()
+                .unwrap()
+            }
+        } else {
+            throw_error("Streams not supported for not async clients", self.dry_run);
+            quote!()
+        }
+    }
+    
+    fn compile_bytes_stream(&self) -> TokenStream2 {
+        if self.async_supported {
+            quote! {
+                .await
+                .bytes_stream()
                 .unwrap()
             }
         } else {
