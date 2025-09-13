@@ -37,6 +37,7 @@ let client = ExampleClient::config()
 */
 #[proc_macro_attribute]
 pub fn clientix(attrs: TokenStream, item: TokenStream) -> TokenStream {
+    // TODO: научить clientix работать со структурными объектам, а не только с trait
     parse_client(item, attrs)
 }
 
@@ -61,6 +62,7 @@ fn get(&self, #[segment] path_query: &str, #[query] query_param: &str, #[header]
 */
 #[proc_macro_attribute]
 pub fn get(attrs: TokenStream, item: TokenStream) -> TokenStream {
+    // TODO: научить get работать с независимыми функциями и со структурными методами (блок impl)
     parse_method(Method::GET, item, attrs)
 }
 
@@ -87,6 +89,7 @@ RequestBody must implement the #[data_transfer] macro.
 */
 #[proc_macro_attribute]
 pub fn post(attrs: TokenStream, item: TokenStream) -> TokenStream {
+    // TODO: научить post работать с независимыми функциями и со структурными методами (блок impl)
     parse_method(Method::POST, item, attrs)
 }
 
@@ -113,6 +116,7 @@ RequestBody must implement the #[data_transfer] macro.
 */
 #[proc_macro_attribute]
 pub fn put(attrs: TokenStream, item: TokenStream) -> TokenStream {
+    // TODO: научить put работать с независимыми функциями и со структурными методами (блок impl)
     parse_method(Method::PUT, item, attrs)
 }
 
@@ -137,6 +141,7 @@ fn delete(&self, #[segment] path_query: &str, #[query] query_param: &str, #[head
 */
 #[proc_macro_attribute]
 pub fn delete(attrs: TokenStream, item: TokenStream) -> TokenStream {
+    // TODO: научить delete работать с независимыми функциями и со структурными методами (блок impl)
     parse_method(Method::DELETE, item, attrs)
 }
 
@@ -161,6 +166,7 @@ fn head(&self, #[segment] path_query: &str, #[query] query_param: &str) -> Clien
 */
 #[proc_macro_attribute]
 pub fn head(attrs: TokenStream, item: TokenStream) -> TokenStream {
+    // TODO: научить head работать с независимыми функциями и со структурными методами (блок impl)
     parse_method(Method::HEAD, item, attrs)
 }
 
@@ -185,6 +191,7 @@ fn patch(&self, #[segment] path_query: &str, #[query] query_param: &str) -> Clie
 */
 #[proc_macro_attribute]
 pub fn patch(attrs: TokenStream, item: TokenStream) -> TokenStream {
+    // TODO: научить patch работать с независимыми функциями и со структурными методами (блок impl)
     parse_method(Method::PATCH, item, attrs)
 }
 
@@ -235,7 +242,8 @@ pub fn data_transfer(_: TokenStream, item: TokenStream) -> TokenStream {
     let ident = item.ident.clone();
     let fields = item.fields.clone();
 
-    // TODO: научить data_transfer использовать все возможности serde на максимум
+    // TODO: научить data_transfer использовать все возможности serde на максимум, сделать так,
+    //  чтобы подобный подход не вредил блоку derive и другим макросам и дал возможность пользователю самому решать о содержимом derive также
     TokenStream::from(quote! {
         #[derive(clientix::prelude::serde::Serialize, clientix::prelude::serde::Deserialize, Debug, Clone)]
         #[serde(crate = "clientix::prelude::serde")]
@@ -243,5 +251,16 @@ pub fn data_transfer(_: TokenStream, item: TokenStream) -> TokenStream {
     })
 }
 
-// TODO: implemented HTTP-methods based independent functions
-// TODO: implemented building client based struct params
+#[proc_macro_attribute]
+pub fn request_args(_attrs: TokenStream, _item: TokenStream) -> TokenStream {
+    // TODO: реализовать соответствующую логику для парсинга структуры аргументов запроса,
+    //  включая #[segment], #[placeholder], #[query], #[header], #[body]. Необходимо для поддержки
+    //  аргументов запроса с макросом #[args]. Необходима имплементация геттеров для получения
+    //  соответствующих значений полей
+    TokenStream::from(quote! {})
+}
+
+#[proc_macro_derive(RequestArgs, attributes(segment, placeholder, query, header, body))]
+pub fn request_args_derive(_item: TokenStream) -> TokenStream {
+    TokenStream::from(quote! {})
+}
