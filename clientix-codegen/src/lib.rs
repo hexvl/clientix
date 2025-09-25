@@ -15,25 +15,6 @@ A procedural macro for building an HTTP client. It includes the following attrib
 - url - the base part of the client’s URL, e.g. http://localhost:8080
 - path - an additional part of the URL path that precedes method paths
 - async - if true, the client is asynchronous; otherwise, it is blocking
-
-Example:
-```
-#[clientix(url = "http://localhost:8080")]
-trait ExampleClient {
-
-    #[get(path = "/", consumes = "application/json", produces = "application/json")]
-    fn get(&self) -> ClientixResult<ClientixResponse<String>>;
-
-}
-```
-
-The client also supports configuring parameters imperatively. Example:
-```
-let client = ExampleClient::config()
-    .url("http://localhost:8080")
-    .path("/test")
-    .setup();
-```
 */
 #[proc_macro_attribute]
 pub fn clientix(attrs: TokenStream, item: TokenStream) -> TokenStream {
@@ -54,11 +35,6 @@ GET method supports argument macros:
 - #[body] - maps method arguments to request body (object implemented #[data_transfer])
 - #[placeholder] - maps method arguments to request header placeholders
 
-Example:
-```
-#[get(path = "/{path_query}", consumes = "application/json", produces = "application/json")]
-fn get(&self, #[segment] path_query: &str, #[query] query_param: &str, #[header] authorization: &str) -> ClientixResult<ClientixResponse<String>>;
-```
 */
 #[proc_macro_attribute]
 pub fn get(attrs: TokenStream, item: TokenStream) -> TokenStream {
@@ -78,12 +54,6 @@ POST method supports argument macros:
 - #[header] - maps method arguments to request headers (simple types, String)
 - #[body] - maps method arguments to request body (object implemented #[data_transfer])
 - #[placeholder] - maps method arguments to request header placeholders
-
-Example:
-```
-#[post(path = "/{path_query}", consumes = "application/json", produces = "application/json")]
-fn post(&self, #[segment] path_query: &str, #[query] query_param: &str, #[header] authorization: &str, #[body] request: RequestBody) -> ClientixResult<ClientixResponse<String>>;
-```
 
 RequestBody must implement the #[data_transfer] macro.
 */
@@ -106,12 +76,6 @@ PUT method supports argument macros:
 - #[body] - maps method arguments to request body (object implemented #[data_transfer])
 - #[placeholder] - maps method arguments to request header placeholders
 
-Example:
-```
-#[put(path = "/{path_query}", consumes = "application/json", produces = "application/json")]
-fn put(&self, #[segment] path_query: &str, #[query] query_param: &str, #[header] authorization: &str, #[body] request: RequestBody) -> ClientixResult<ClientixResponse<String>>;
-```
-
 RequestBody must implement the #[data_transfer] macro.
 */
 #[proc_macro_attribute]
@@ -133,11 +97,6 @@ DELETE method supports argument macros:
 - #[body] - maps method arguments to request body (object implemented #[data_transfer])
 - #[placeholder] - maps method arguments to request header placeholders
 
-Example:
-```
-#[delete(path = "/{path_query}", consumes = "application/json", produces = "application/json")]
-fn delete(&self, #[segment] path_query: &str, #[query] query_param: &str, #[header] authorization: &str) -> ClientixResult<ClientixResponse<String>>;
-```
 */
 #[proc_macro_attribute]
 pub fn delete(attrs: TokenStream, item: TokenStream) -> TokenStream {
@@ -158,11 +117,6 @@ HEAD method supports argument macros:
 - #[body] - maps method arguments to request body (object implemented #[data_transfer])
 - #[placeholder] - maps method arguments to request header placeholders
 
-Example:
-```
-#[head(path = "/{path_query}", consumes = "application/json", produces = "application/json")]
-fn head(&self, #[segment] path_query: &str, #[query] query_param: &str) -> ClientixResult<ClientixResponse<String>>;
-```
 */
 #[proc_macro_attribute]
 pub fn head(attrs: TokenStream, item: TokenStream) -> TokenStream {
@@ -183,11 +137,6 @@ PATCH method supports argument macros:
 - #[body] - maps method arguments to request body (object implemented #[data_transfer])
 - #[placeholder] - maps method arguments to request header placeholders
 
-Example:
-```
-#[patch(path = "/{path_query}", consumes = "application/json", produces = "application/json")]
-fn patch(&self, #[segment] path_query: &str, #[query] query_param: &str) -> ClientixResult<ClientixResponse<String>>;
-```
 */
 #[proc_macro_attribute]
 pub fn patch(attrs: TokenStream, item: TokenStream) -> TokenStream {
@@ -203,13 +152,6 @@ A procedural macro for adding HTTP headers to a request. It includes the followi
 
 It also supports filling #[placeholder] into header values.
 
-Examples:
-```
-#[header(name = "Content-Type", value = "application/json")]
-#[header(name = "Authorization", value = "Bearer {token}", sensitive = true)]
-#[get(path = "/", consumes = "application/json", produces = "application/json")]
-fn get(&self, #[placeholder] token: &str) -> ClientixResult<ClientixResponse<String>>;
-```
 */
 #[proc_macro_attribute]
 pub fn header(attrs: TokenStream, item: TokenStream) -> TokenStream {
@@ -218,22 +160,6 @@ pub fn header(attrs: TokenStream, item: TokenStream) -> TokenStream {
 
 /**
 A procedural macro for generating DTO objects.
-
-Example:
-```
-#[data_transfer]
-pub struct CreateObjectRequest {
-    pub name: String,
-    pub data: HashMap<String, String>,
-}
-
-#[data_transfer]
-pub struct CreatedObjectResponse {
-    pub id: String,
-    pub name: String,
-    pub data: HashMap<String, String>
-}
-```
 */
 #[proc_macro_attribute]
 pub fn data_transfer(_: TokenStream, item: TokenStream) -> TokenStream {
