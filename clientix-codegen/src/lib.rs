@@ -1,14 +1,18 @@
 mod client;
 mod method;
 mod utils;
+mod attributes;
+mod derive;
 
 use proc_macro::TokenStream;
-use quote::quote;
-use syn::{parse_macro_input, ItemStruct};
+use quote::{quote, ToTokens};
+use syn::{parse_macro_input, DeriveInput, ItemStruct};
 use clientix_core::prelude::reqwest::Method;
 use crate::client::parse_client;
 use crate::method::parse_header;
 use crate::method::parse_method;
+use syn::parse::Parser;
+use crate::utils::throw_error;
 
 /**
 A procedural macro for building an HTTP client. It includes the following attributes:
@@ -29,11 +33,10 @@ A procedural macro for building an HTTP GET method of trait. It includes the fol
 - produces - accept type for response, support: application/json, application/xml, application/x-www-form-urlencoded (String)
 
 GET method supports argument macros:
-- #[segment] - maps method arguments to path segments (simple types, String)
+- #[segment] - maps method arguments to path segments and header placeholders (simple types, String)
 - #[query] - maps method arguments to query parameters (simple types, String)
 - #[header] - maps method arguments to request headers (simple types, String)
 - #[body] - maps method arguments to request body (object implemented #[data_transfer])
-- #[placeholder] - maps method arguments to request header placeholders
 
 */
 #[proc_macro_attribute]
@@ -49,11 +52,10 @@ A procedural macro for building an HTTP POST method of trait. It includes the fo
 - produces - accept type for response, support: application/json, application/xml, application/x-www-form-urlencoded (String)
 
 POST method supports argument macros:
-- #[segment] - maps method arguments to path segments (simple types, String)
+- #[segment] - maps method arguments to path segments and header placeholders (simple types, String)
 - #[query] - maps method arguments to query parameters (simple types, String)
 - #[header] - maps method arguments to request headers (simple types, String)
 - #[body] - maps method arguments to request body (object implemented #[data_transfer])
-- #[placeholder] - maps method arguments to request header placeholders
 
 RequestBody must implement the #[data_transfer] macro.
 */
@@ -70,11 +72,10 @@ A procedural macro for building an HTTP PUT method of trait. It includes the fol
 - produces - accept type for response, support: application/json, application/xml, application/x-www-form-urlencoded (String)
 
 PUT method supports argument macros:
-- #[segment] - maps method arguments to path segments (simple types, String)
+- #[segment] - maps method arguments to path segments and header placeholders (simple types, String)
 - #[query] - maps method arguments to query parameters (simple types, String)
 - #[header] - maps method arguments to request headers (simple types, String)
 - #[body] - maps method arguments to request body (object implemented #[data_transfer])
-- #[placeholder] - maps method arguments to request header placeholders
 
 RequestBody must implement the #[data_transfer] macro.
 */
@@ -91,11 +92,10 @@ A procedural macro for building an HTTP DELETE method of trait. It includes the 
 - produces - accept type for response, support: application/json, application/xml, application/x-www-form-urlencoded (String)
 
 DELETE method supports argument macros:
-- #[segment] - maps method arguments to path segments (simple types, String)
+- #[segment] - maps method arguments to path segments and header placeholders (simple types, String)
 - #[query] - maps method arguments to query parameters (simple types, String)
 - #[header] - maps method arguments to request headers (simple types, String)
 - #[body] - maps method arguments to request body (object implemented #[data_transfer])
-- #[placeholder] - maps method arguments to request header placeholders
 
 */
 #[proc_macro_attribute]
@@ -111,11 +111,10 @@ A procedural macro for building an HTTP HEAD method of trait. It includes the fo
 - produces - accept type for response, support: application/json, application/xml, application/x-www-form-urlencoded (String)
 
 HEAD method supports argument macros:
-- #[segment] - maps method arguments to path segments (simple types, String)
+- #[segment] - maps method arguments to path segments and header placeholders (simple types, String)
 - #[query] - maps method arguments to query parameters (simple types, String)
 - #[header] - maps method arguments to request headers (simple types, String)
 - #[body] - maps method arguments to request body (object implemented #[data_transfer])
-- #[placeholder] - maps method arguments to request header placeholders
 
 */
 #[proc_macro_attribute]
@@ -131,11 +130,10 @@ A procedural macro for building an HTTP PATCH method of trait. It includes the f
 - produces - accept type for response, support: application/json, application/xml, application/x-www-form-urlencoded (String)
 
 PATCH method supports argument macros:
-- #[segment] - maps method arguments to path segments (simple types, String)
+- #[segment] - maps method arguments to path segments and header placeholders (simple types, String)
 - #[query] - maps method arguments to query parameters (simple types, String)
 - #[header] - maps method arguments to request headers (simple types, String)
 - #[body] - maps method arguments to request body (object implemented #[data_transfer])
-- #[placeholder] - maps method arguments to request header placeholders
 
 */
 #[proc_macro_attribute]
@@ -150,8 +148,7 @@ A procedural macro for adding HTTP headers to a request. It includes the followi
 - value - HTTP header value (String)
 - sensitive - sensitive HTTP header value (true/false)
 
-It also supports filling #[placeholder] into header values.
-
+It also supports filling #[segment] into header values.
 */
 #[proc_macro_attribute]
 pub fn header(attrs: TokenStream, item: TokenStream) -> TokenStream {
@@ -167,26 +164,93 @@ pub fn data_transfer(_: TokenStream, item: TokenStream) -> TokenStream {
     let vis = item.vis.clone();
     let ident = item.ident.clone();
     let fields = item.fields.clone();
+    let attrs = item.attrs.clone();
 
-    // TODO: научить data_transfer использовать все возможности serde на максимум, сделать так,
-    //  чтобы подобный подход не вредил блоку derive и другим макросам и дал возможность пользователю самому решать о содержимом derive также
     TokenStream::from(quote! {
-        #[derive(clientix::prelude::serde::Serialize, clientix::prelude::serde::Deserialize, Debug, Clone)]
+        #(#attrs)*
+        #[derive(clientix::prelude::serde::Serialize, clientix::prelude::serde::Deserialize, Clone, Debug)]
         #[serde(crate = "clientix::prelude::serde")]
         #vis struct #ident #fields
     })
 }
 
 #[proc_macro_attribute]
-pub fn request_args(_attrs: TokenStream, _item: TokenStream) -> TokenStream {
-    // TODO: реализовать соответствующую логику для парсинга структуры аргументов запроса,
-    //  включая #[segment], #[placeholder], #[query], #[header], #[body]. Необходимо для поддержки
-    //  аргументов запроса с макросом #[args]. Необходима имплементация геттеров для получения
-    //  соответствующих значений полей
-    TokenStream::from(quote! {})
+pub fn request_args(_: TokenStream, item: TokenStream) -> TokenStream {
+    let item = parse_macro_input!(item as ItemStruct);
+    let vis = item.vis.clone();
+    let ident = item.ident.clone();
+    let fields = item.fields.clone();
+    let attrs = item.attrs.clone();
+
+    TokenStream::from(quote! {
+        #(#attrs)*
+        #[derive(clientix::RequestArgs, Clone, Debug)]
+        #vis struct #ident #fields
+    })
 }
 
-#[proc_macro_derive(RequestArgs, attributes(segment, placeholder, query, header, body))]
-pub fn request_args_derive(_item: TokenStream) -> TokenStream {
-    TokenStream::from(quote! {})
+#[proc_macro_derive(RequestArgs, attributes(segment, query, header, body))]
+pub fn request_args_derive(item: TokenStream) -> TokenStream {
+    let derive_input = parse_macro_input!(item as DeriveInput);
+    let ident = &derive_input.ident;
+
+    let mut segments_stream = quote!(let mut arguments = std::collections::HashMap::new(););
+    let mut queries_stream = quote!(let mut arguments = std::collections::HashMap::new(););
+    let mut headers_stream = quote!(let mut arguments = std::collections::HashMap::new(););
+    let mut body_stream = quote!();
+    match derive_input.data {
+        syn::Data::Struct(data) => {
+            for field in &data.fields {
+                for attr in &field.attrs {
+                    match attr.path() {
+                        ref path if path.is_ident("segment") => {
+                            let segment_variable = field.ident.clone().unwrap();
+                            let segment_id = format!("{}", quote! {#segment_variable});
+
+                            segments_stream.extend(quote!(arguments.insert(#segment_id.to_string(), self.#segment_variable.to_string());));
+                        },
+                        ref path if path.is_ident("query") => {
+                            let query_variable = field.ident.clone().unwrap();
+                            let query_id = format!("{}", quote! {#query_variable});
+
+                            segments_stream.extend(quote!(arguments.insert(#query_id.to_string(), self.#query_variable.to_string());));
+                        }
+                        ref path if path.is_ident("header") => {
+                            let header_variable = field.ident.clone().unwrap();
+                            let header_id = format!("{}", quote! {#header_variable});
+
+                            segments_stream.extend(quote!(arguments.insert(#header_id.to_string(), self.#header_variable.to_string());));
+                        }
+                        ref path if path.is_ident("body") => {
+                            let body_variable = field.ident.clone().unwrap();
+                            body_stream.extend(quote!(self.#body_variable.to_string()));
+                        }
+                        _ => throw_error("unsupported attribute", false),
+                    }
+                }
+            }
+        },
+        _ => {}
+    }
+    segments_stream.extend(quote!(arguments));
+    queries_stream.extend(quote!(arguments));
+    headers_stream.extend(quote!(arguments));
+
+    TokenStream::from(quote! {
+        impl #ident {
+
+            pub fn segments(&self) -> std::collections::HashMap<String, String> {
+                #segments_stream
+            }
+
+            pub fn queries(&self) -> std::collections::HashMap<String, String> {
+                #queries_stream
+            }
+
+            pub fn headers(&self) -> std::collections::HashMap<String, String> {
+                #headers_stream
+            }
+
+        }
+    })
 }

@@ -11,9 +11,8 @@ const CLIENTIX_SSE_STREAM_TYPE: &str = "ClientixSSEStream";
 const OPTION_TYPE: &str = "Option";
 const STRING_TYPE: &str = "String";
 
-#[derive(Clone, Default)]
+#[derive(Clone, Debug)]
 pub enum ReturnKind {
-    #[default]
     Unit,
     ClientixResultOfResponseOfString,
     ClientixResultOfResponse,
@@ -38,8 +37,8 @@ pub enum ReturnKind {
     Other
 }
 
-#[derive(Clone, Default)]
-pub struct OutputConfig {
+#[derive(Clone, Debug)]
+pub struct OutputCompiler {
     kind: ReturnKind,
     async_supported: bool,
     produces: Option<ContentType>,
@@ -88,7 +87,7 @@ impl From<ReturnType> for ReturnKind {
 
 }
 
-impl OutputConfig {
+impl OutputCompiler {
 
     pub fn new(return_type: ReturnType, async_supported: bool, produces: Option<ContentType>, dry_run: bool) -> Self {
         let kind = return_type.into();
@@ -123,7 +122,7 @@ impl OutputConfig {
     }
 
     fn compile_unit(&self) -> TokenStream2 {
-        quote! {;}
+        quote!(;)
     }
 
     fn compile_text_response_result(&self) -> TokenStream2 {
@@ -138,10 +137,10 @@ impl OutputConfig {
     fn compile_object_response_result(&self) -> TokenStream2 {
         let compiled_async_directive = self.compile_async();
         let compiled_object_method = match self.produces {
-            Some(ContentType::ApplicationXml) => quote!{.xml()},
-            Some(ContentType::ApplicationXWwwFormUrlEncoded) => quote!{.urlencoded()},
-            Some(ContentType::TextHtml) => quote!{.text()},
-            _ => quote!{.json()},
+            Some(ContentType::ApplicationXml) => quote!(.xml()),
+            Some(ContentType::ApplicationXWwwFormUrlEncoded) => quote!(.urlencoded()),
+            Some(ContentType::TextHtml) => quote!(.text()),
+            _ => quote!(.json()),
         };
 
         quote! {

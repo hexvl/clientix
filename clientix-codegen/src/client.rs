@@ -1,27 +1,40 @@
 use proc_macro::TokenStream;
 use quote::quote;
-use syn::{Ident, ItemTrait, TraitItem, LitStr, LitBool, Visibility};
+use syn::{Ident, ItemTrait, TraitItem, Visibility};
 use syn::__private::{Span, TokenStream2};
-use syn::parse::Parser;
-use crate::method::MethodConfig;
+use crate::attributes::client::ClientAttributes;
+use crate::method::MethodCompiler;
 
-#[derive(Clone)]
-pub struct ClientConfig {
-    item: Option<ItemTrait>,
-    url: Option<String>,
-    path: Option<String>,
-    async_supported: bool,
-    methods: Vec<MethodConfig>
+#[derive(Clone, Debug)]
+pub struct ClientCompiler {
+    ident: Ident,
+    visibility: Visibility,
+    attributes: ClientAttributes,
+    methods: Vec<MethodCompiler>
 }
 
-impl ClientConfig {
+impl ClientCompiler {
 
-    pub fn create(item: TokenStream, attrs: TokenStream) -> Self {
-        let mut client_attrs = ClientConfig { item: None, url: None, path: None, async_supported: false, methods: vec![] };
+    pub fn parse(item: TokenStream2, attrs: TokenStream2) -> Self {
+        let attributes = ClientAttributes::parse(attrs);
 
-        client_attrs.parse(TokenStream2::from(item), TokenStream2::from(attrs));
+        let item: ItemTrait = match syn::parse2(item) {
+            Ok(input) => input,
+            Err(err) => panic!("{}", err)
+        };
 
-        client_attrs
+        let ident = item.ident;
+        let visibility = item.vis;
+
+        let methods = item.items.into_iter()
+            .filter_map(|item| match item {
+                TraitItem::Fn(fn_item) => Some(fn_item),
+                _ => None
+            })
+            .map(|item| MethodCompiler::new(item.sig, item.attrs, attributes.async_supported()))
+            .collect::<Vec<_>>();
+
+        Self { ident, visibility, attributes, methods }
     }
 
     pub fn compile(&self) -> TokenStream2 {
@@ -37,7 +50,7 @@ impl ClientConfig {
     }
 
     fn compile_interface(&self) -> TokenStream2 {
-        let client_interface_name = Ident::new(&format!("{}{}", self.get_ident(), "Interface"), Span::call_site());
+        let client_interface_name = Ident::new(&format!("{}{}", &self.ident, "Interface"), Span::call_site());
         let client_interface_declarations_fn = self.methods.iter()
             .map(|method| method.compile_declaration())
             .collect::<Vec<_>>();
@@ -50,12 +63,12 @@ impl ClientConfig {
     }
 
     fn compile_builder(&self) -> TokenStream2 {
-        let client_url = self.get_url();
-        let client_path = self.get_path();
-        let client_struct_name = self.get_ident();
-        let client_visibility = self.get_vis();
-        let client_builder_name = Ident::new(&format!("{}{}", self.get_ident(), "Builder"), Span::call_site());
-        let client_type_method = if self.async_supported { quote! {asynchronous()} } else { quote! {blocking()} };
+        let client_struct_name = &self.ident;
+        let client_visibility = &self.visibility;
+        let client_builder_name = Ident::new(&format!("{}{}", &self.ident, "Builder"), Span::call_site());
+        let client_url = if let Some(url) = self.attributes.url() { quote!(.url(#url)) } else { quote!() };
+        let client_path = if let Some(path) = self.attributes.path() { quote!(.path(#path)) } else { quote!() };
+        let client_type_method = if self.attributes.async_supported() { quote!(asynchronous()) } else { quote!(blocking()) };
 
         TokenStream2::from(quote! {
             #client_visibility struct #client_builder_name {
@@ -65,8 +78,8 @@ impl ClientConfig {
             impl #client_builder_name {
                 pub fn new() -> Self {
                     let clientix_builder = clientix::client::Clientix::builder()
-                        .url(#client_url)
-                        .path(#client_path);
+                        #client_url
+                        #client_path;
 
                     Self { clientix_builder }
                 }
@@ -139,11 +152,11 @@ impl ClientConfig {
     }
 
     fn compile_client(&self) -> TokenStream2 {
-        let client_struct_name = self.get_ident();
-        let client_visibility = self.get_vis();
-        let client_builder_name = Ident::new(&format!("{}{}", self.get_ident(), "Builder"), Span::call_site());
+        let client_struct_name = &self.ident;
+        let client_visibility = &self.visibility;
+        let client_builder_name = Ident::new(&format!("{}{}", &self.ident, "Builder"), Span::call_site());
 
-        let client_type = TokenStream2::from(if self.async_supported {
+        let client_type = TokenStream2::from(if self.attributes.async_supported() {
             quote! {clientix::client::asynchronous::AsyncClient}
         } else {
             quote! {clientix::client::blocking::BlockingClient}
@@ -175,83 +188,11 @@ impl ClientConfig {
         })
     }
 
-    fn parse(&mut self, item: TokenStream2, attrs: TokenStream2) {
-        self.parse_attrs(attrs);
-        self.parse_item(item);
-    }
-
-    fn parse_item(&mut self, item: TokenStream2) {
-        let input: ItemTrait = match syn::parse2(item) {
-            Ok(input) => input,
-            Err(err) => panic!("{}", err)
-        };
-
-        self.item = Some(input);
-
-        let trait_items = self.item.clone().expect("missing item trait").items;
-        let trait_methods = trait_items.iter().filter_map(|item| {
-            match item {
-                TraitItem::Fn(fn_item) => Some(fn_item),
-                _ => None
-            }
-        }).collect::<Vec<_>>();
-
-        for trait_method in trait_methods {
-            self.methods.push(MethodConfig::create_by_item(trait_method.clone(), self.async_supported));
-        }
-    }
-
-    fn parse_attrs(&mut self, attrs: TokenStream2) {
-        let parser = syn::meta::parser(|meta| {
-            match meta.path {
-                ref path if path.is_ident("url") => {
-                    self.url = Some(meta.value()?.parse::<LitStr>()?.value());
-                    Ok(())
-                },
-                ref path if path.is_ident("path") => {
-                    self.path = Some(meta.value()?.parse::<LitStr>()?.value());
-                    Ok(())
-                }
-                ref path if path.is_ident("async") => {
-                    self.async_supported = meta.value()?.parse::<LitBool>()?.value();
-                    Ok(())
-                }
-                _ => Err(meta.error(format!("unexpected client parameter: {}", meta.path.get_ident().map(Ident::to_string).unwrap_or_default())))
-            }
-        });
-
-        match parser.parse2(attrs.clone().into()) {
-            Ok(_) => (),
-            Err(e) => panic!("{}", e)
-        };
-    }
-
-    fn get_ident(&self) -> Ident {
-        self.item.clone().expect("missing client name").ident
-    }
-    
-    fn get_vis(&self) -> Visibility {
-        self.item.clone().expect("missing client name").vis
-    }
-
-    fn get_url(&self) -> String {
-        self.url.clone().unwrap_or(String::new())
-    }
-
-    fn get_path(&self) -> String {
-        self.path.clone().unwrap_or(String::new())
-    }
-
 }
 
 pub fn parse_client(item: TokenStream, attrs: TokenStream) -> TokenStream {
-    let client_config = ClientConfig::create(item, attrs);
+    let client_compiler = ClientCompiler::parse(TokenStream2::from(item), TokenStream2::from(attrs));
+    let compiled_client = client_compiler.compile();
 
-    let compiled_client = client_config.compile();
-
-    let expanded = quote! {
-        #compiled_client
-    };
-
-    TokenStream::from(expanded)
+    TokenStream::from(quote!(#compiled_client))
 }
