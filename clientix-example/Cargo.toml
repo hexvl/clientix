@@ -9,9 +9,14 @@ repository.workspace = true
 readme.workspace = true
 license.workspace = true
 keywords.workspace = true
+publish = false
 
 name = "clientix-example"
 
 [dependencies]
 clientix = { workspace = true }
-tokio = { version = "1.47.1", features = ["full"] }
+tokio = "1.47.1"
+
+[features]
+default = ["std"]
+std = ["tokio/full"]

@@ -15,3 +15,7 @@ name = "clientix"
 [dependencies]
 clientix-core = { workspace = true }
 clientix-codegen = { workspace = true }
+
+[features]
+default = ["std"]
+std = ["clientix-core/std"]

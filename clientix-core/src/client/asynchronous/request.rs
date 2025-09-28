@@ -20,7 +20,7 @@ impl ClientixRequestBuilder for AsyncRequest {
     fn result(&mut self) -> &mut ClientixResult<()> {
         &mut self.result
     }
-    
+
 }
 
 impl AsyncRequest {

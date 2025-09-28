@@ -1,4 +1,4 @@
-use crate::client::asynchronous::stream::{ClientixStream, ClientixStreamInterface};
+use crate::client::asynchronous::stream::ClientixStream;
 use crate::client::response::{ClientixError, ClientixResult};
 use futures_core::Stream;
 use futures_util::{StreamExt, TryStreamExt};
@@ -54,8 +54,8 @@ impl<T> SSE<T> {
         &self.retry
     }
 
-    pub fn data(&self) -> &Option<T> {
-        &self.data
+    pub fn data(self) -> Option<T> {
+        self.data
     }
 
 }
@@ -90,6 +90,40 @@ impl<T> ClientixSSEStream<T> {
             headers,
             stream: Box::pin(stream)
         }
+    }
+
+    pub fn version(&self) -> Version {
+        self.version
+    }
+
+    pub fn content_length(&self) -> Option<u64> {
+        self.content_length
+    }
+
+    pub fn status(&self) -> StatusCode {
+        self.status
+    }
+
+    pub fn url(&self) -> &Url {
+        &self.url
+    }
+
+    pub fn remote_addr(&self) -> Option<SocketAddr> {
+        self.remote_addr
+    }
+
+    pub fn headers(&self) -> &HeaderMap {
+        &self.headers
+    }
+
+    pub async fn execute<F>(mut self, mut handle: F) where F: FnMut(ClientixResult<SSE<T>>) {
+        while let Some(result) = self.stream.next().await {
+            handle(result);
+        }
+    }
+
+    pub async fn collect(self) -> ClientixResult<Vec<SSE<T>>> {
+        self.stream.try_collect().await
     }
 
 }
@@ -144,44 +178,6 @@ impl<T> Stream for ClientixSSEStream<T> {
     fn poll_next(mut self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Option<Self::Item>> {
         self.stream.poll_next_unpin(cx)
     }
-}
-
-impl<T> ClientixStreamInterface<SSE<T>> for ClientixSSEStream<T> {
-
-    fn version(&self) -> Version {
-        self.version
-    }
-
-    fn content_length(&self) -> Option<u64> {
-        self.content_length
-    }
-
-    fn status(&self) -> StatusCode {
-        self.status
-    }
-
-    fn url(&self) -> &Url {
-        &self.url
-    }
-
-    fn remote_addr(&self) -> Option<SocketAddr> {
-        self.remote_addr
-    }
-
-    fn headers(&self) -> &HeaderMap {
-        &self.headers
-    }
-
-    async fn execute<F>(mut self, mut handle: F) where F: FnMut(ClientixResult<SSE<T>>) {
-        while let Some(result) = self.stream.next().await {
-            handle(result);
-        }
-    }
-
-    async fn collect(self) -> ClientixResult<Vec<SSE<T>>> {
-        self.stream.try_collect().await
-    }
-
 }
 
 impl From<ClientixStream> for ClientixSSEStream<String> {
