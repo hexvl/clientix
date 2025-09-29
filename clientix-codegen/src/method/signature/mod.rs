@@ -98,25 +98,22 @@ impl SignatureCompiler {
             Meta::NameValue(value) => (value.path, TokenStream2::new(), attr_expr),
         })
             .for_each(|(path, attrs, attr_expr)| {
-                let ident = Ident::new(&format!("{}", &pat_type.pat.to_token_stream()), Span::call_site());
-                let ty = *pat_type.ty.clone();
-
                 match path {
                     ref path if path.is_ident(SEGMENT_MACRO) => {
-                        self.segments.push(SegmentArgumentCompiler::parse(ident, ty, attrs, self.dry_run));
+                        self.segments.push(SegmentArgumentCompiler::parse_argument(pat_type.clone(), attrs, self.dry_run));
                     },
                     ref path if path.is_ident(QUERY_MACRO) => {
-                        self.queries.push(QueryArgumentCompiler::parse(ident, ty, attrs, self.dry_run));
+                        self.queries.push(QueryArgumentCompiler::parse_argument(pat_type.clone(), attrs, self.dry_run));
                     },
                     ref path if path.is_ident(HEADER_MACRO) => {
-                        self.headers.push(HeaderArgumentCompiler::parse(ident, ty, attrs, self.dry_run));
+                        self.headers.push(HeaderArgumentCompiler::parse_argument(pat_type.clone(), attrs, self.dry_run));
                     },
                     ref path if path.is_ident(ARGS_MACRO) => {
-                        self.args.push(ArgsArgumentCompiler::parse(ident));
+                        self.args.push(ArgsArgumentCompiler::parse(pat_type.clone()));
                     }
                     ref path if path.is_ident(BODY_MACRO) => {
                         match self.body {
-                            None => self.body = Some(BodyArgumentCompiler::parse(ident, ty)),
+                            None => self.body = Some(BodyArgumentCompiler::parse_argument(pat_type.clone())),
                             Some(_) => throw_error("multiple body arg", self.dry_run),
                         }
                     },
@@ -146,7 +143,11 @@ impl SignatureCompiler {
                 for segment_argument in self.segments().iter() {
                     let name = segment_argument.name();
                     let value = segment_argument.value();
-                    stream.extend(quote!(arguments.insert(#name.to_string(), #value.to_string());));
+                    stream.extend(quote! {
+                        if let Some(segment) = #value {
+                            arguments.insert(#name.to_string(), segment.to_string());
+                        }
+                    });
                 }
 
                 stream.extend(quote! {
@@ -174,7 +175,13 @@ impl SignatureCompiler {
                 let name = header_argument.name();
                 let value = header_argument.value();
                 let sensitive = header_argument.sensitive();
-                stream.extend(quote!(let builder = builder.header(#name, #value.to_string().as_str(), #sensitive);));
+                stream.extend(quote! {
+                    let builder = if let Some(header) = #value {
+                        builder.header(#name, header.to_string().as_str(), #sensitive)
+                    } else {
+                        builder
+                    };
+                });
             }
         }
 
@@ -194,7 +201,13 @@ impl SignatureCompiler {
             for query_argument in self.queries.iter() {
                 let name = query_argument.name();
                 let value = query_argument.value();
-                stream.extend(quote!(let builder = builder.query(#name, #value.to_string().as_str());));
+                stream.extend(quote! {
+                    let builder = if let Some(query) = #value {
+                        builder.query(#name, query.to_string().as_str())
+                    } else {
+                        builder
+                    };
+                });
             }
         }
 
