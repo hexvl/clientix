@@ -1,6 +1,6 @@
-use quote::quote;
-use syn::__private::TokenStream2;
-use syn::Ident;
+use quote::{quote, ToTokens};
+use syn::__private::{Span, TokenStream2};
+use syn::{Ident, PatType};
 
 #[derive(Clone, Debug)]
 pub struct ArgsArgumentCompiler {
@@ -9,8 +9,12 @@ pub struct ArgsArgumentCompiler {
 
 impl ArgsArgumentCompiler {
 
-    pub fn parse(ident: Ident) -> Self {
-        Self { ident }
+    pub fn parse(pat_type: PatType) -> Self {
+        let ident = Ident::new(&format!("{}", &pat_type.pat.to_token_stream()), Span::call_site());
+
+        Self {
+            ident
+        }
     }
 
     pub fn compile_segments(&self) -> TokenStream2 {

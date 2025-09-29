@@ -71,22 +71,19 @@ impl RequestArgsCompiler {
             Meta::List(value) => (value.path, value.tokens.to_token_stream(), attr_expr),
             Meta::NameValue(value) => (value.path, TokenStream2::new(), attr_expr),
         }).for_each(|(path, attrs, _)| {
-            let ident = field.ident.clone().unwrap();
-            let ty = field.ty.clone();
-            
             match path {
                 ref path if path.is_ident(SEGMENT_MACRO) => {
-                    self.segments.push(SegmentArgumentCompiler::parse(ident, ty, attrs, self.dry_run));
+                    self.segments.push(SegmentArgumentCompiler::parse_field(field.clone(), attrs, self.dry_run));
                 },
                 ref path if path.is_ident(QUERY_MACRO) => {
-                    self.queries.push(QueryArgumentCompiler::parse(ident, ty, attrs, self.dry_run));
+                    self.queries.push(QueryArgumentCompiler::parse_field(field.clone(), attrs, self.dry_run));
                 },
                 ref path if path.is_ident(HEADER_MACRO) => {
-                    self.headers.push(HeaderArgumentCompiler::parse(ident, ty, attrs, self.dry_run));
+                    self.headers.push(HeaderArgumentCompiler::parse_field(field.clone(), attrs, self.dry_run));
                 },
                 ref path if path.is_ident(BODY_MACRO) => {
                     match self.body {
-                        None => self.body = Some(BodyArgumentCompiler::parse(ident, ty)),
+                        None => self.body = Some(BodyArgumentCompiler::parse_field(field.clone())),
                         Some(_) => throw_error("multiple body arg", self.dry_run),
                     }
                 },
@@ -97,10 +94,14 @@ impl RequestArgsCompiler {
 
     fn compile_segments_method(&self) -> TokenStream2 {
         let mut segments_stream = quote!(let mut arguments = std::collections::HashMap::new(););
-        for segment_arg in &self.segments {
-            let name = segment_arg.name();
-            let value = segment_arg.value();
-            segments_stream.extend(quote!(arguments.insert(#name.to_string(), self.#value.to_string());));
+        for segment_argument in &self.segments {
+            let name = segment_argument.name();
+            let value = segment_argument.value();
+            segments_stream.extend(quote! {
+                if let Some(segment) = #value {
+                    arguments.insert(#name.to_string(), segment.to_string());
+                }
+            });
         }
         segments_stream.extend(quote!(arguments));
 
@@ -113,10 +114,14 @@ impl RequestArgsCompiler {
 
     fn compile_queries_method(&self) -> TokenStream2 {
         let mut queries_stream = quote!(let mut arguments = std::collections::HashMap::new(););
-        for query_arg in &self.queries {
-            let name = query_arg.name();
-            let value = query_arg.value();
-            queries_stream.extend(quote!(arguments.insert(#name.to_string(), self.#value.to_string());));
+        for query_argument in &self.queries {
+            let name = query_argument.name();
+            let value = query_argument.value();
+            queries_stream.extend(quote! {
+                if let Some(query) = #value {
+                    arguments.insert(#name.to_string(), query.to_string());
+                }
+            });
         }
         queries_stream.extend(quote!(arguments));
 
@@ -129,10 +134,14 @@ impl RequestArgsCompiler {
 
     fn compile_headers_method(&self) -> TokenStream2 {
         let mut headers_stream = quote!(let mut arguments = std::collections::HashMap::new(););
-        for header_arg in &self.headers {
-            let name = header_arg.name();
-            let value = header_arg.value();
-            headers_stream.extend(quote!(arguments.insert(#name.to_string(), self.#value.to_string());));
+        for header_argument in &self.headers {
+            let name = header_argument.name();
+            let value = header_argument.value();
+            headers_stream.extend(quote! {
+                if let Some(header) = #value {
+                    arguments.insert(#name.to_string(), header.to_string());
+                }
+            });
         }
         headers_stream.extend(quote!(arguments));
 
@@ -144,9 +153,9 @@ impl RequestArgsCompiler {
     }
 
     pub fn compile_body_method(&self) -> TokenStream2 {
-        if let Some(body_arg) = &self.body {
-            let ty = body_arg.ty();
-            let value = body_arg.value();
+        if let Some(body_argument) = &self.body {
+            let ty = body_argument.ty();
+            let value = body_argument.value();
 
             quote! {
                 pub fn body(self) -> Option<#ty> {

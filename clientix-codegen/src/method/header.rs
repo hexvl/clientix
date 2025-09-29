@@ -32,16 +32,20 @@ impl HeaderCompiler {
             stream.extend(quote!(let mut arguments = std::collections::HashMap::new();));
 
             for segment_argument in segments.iter() {
-                let ident = segment_argument.name();
+                let name = segment_argument.name();
                 let value = segment_argument.value();
-                stream.extend(quote!(arguments.insert(#ident.to_string(), #value.to_string());))
+                stream.extend(quote! {
+                    if let Some(segment) = #value {
+                        arguments.insert(#name.to_string(), segment.to_string());
+                    }
+                });
             }
 
             stream.extend(quote!(clientix::prelude::strfmt::strfmt(#value, &arguments).expect("failed to format header").as_str()));
 
-            TokenStream2::from(quote!(.header(#name, {#stream}, #sensitive)))
+            TokenStream2::from(quote!(let builder = builder.header(#name, {#stream}, #sensitive);))
         } else {
-            TokenStream2::from(quote!(.header(#name, #value, #sensitive)))
+            TokenStream2::from(quote!(let builder = builder.header(#name, #value, #sensitive);))
         }
     }
 

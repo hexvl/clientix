@@ -1,6 +1,6 @@
-use quote::quote;
-use syn::__private::TokenStream2;
-use syn::{Ident, Type};
+use quote::{quote, ToTokens};
+use syn::__private::{Span, TokenStream2};
+use syn::{Field, Ident, PatType, Type};
 use crate::attributes::header::HeaderAttributes;
 
 const OPTION_TYPE: &str = "Option";
@@ -9,19 +9,30 @@ const OPTION_TYPE: &str = "Option";
 pub struct HeaderArgumentCompiler {
     ident: Ident,
     ty: Type,
+    is_field: bool,
     attributes: HeaderAttributes,
 }
 
 impl HeaderArgumentCompiler {
     
-    pub fn parse(ident: Ident, ty: Type, attrs: TokenStream2, dry_run: bool) -> Self {
+    pub fn parse_argument(pat_type: PatType, attrs: TokenStream2, dry_run: bool) -> Self {
         Self {
-            ident,
-            ty,
+            ident: Ident::new(&format!("{}", &pat_type.pat.to_token_stream()), Span::call_site()),
+            ty: *pat_type.ty,
+            is_field: false,
             attributes: HeaderAttributes::parse(attrs, dry_run),
         }
     }
-
+            
+    pub fn parse_field(field: Field, attrs: TokenStream2, dry_run: bool) -> Self {
+        Self {
+            ident: field.ident.clone().unwrap(),
+            ty: field.ty,
+            is_field: true,
+            attributes: HeaderAttributes::parse(attrs, dry_run),
+        }
+    }
+            
     pub fn name(&self) -> String {
         let header_ident = &self.ident;
         let header_name = if let Some(name) = self.attributes.name() {
@@ -39,14 +50,20 @@ impl HeaderArgumentCompiler {
     
     pub fn value(&self) -> TokenStream2 {
         let header_ident = &self.ident;
+        let compiled_self = if self.is_field { quote!(&self.) } else { quote!() };
         if self.is_option() {
             if let Some(value) = self.attributes.value() {
-                quote!(#header_ident.unwrap_or(#value))
+                quote! { 
+                    match #compiled_self #header_ident {
+                        Some(value) => Some(value),
+                        None => Some(#value)
+                    }
+                }
             } else {
-                quote!(#header_ident)
+                quote!(#compiled_self #header_ident)
             }
         } else {
-            quote!(#header_ident)
+            quote!(Some(#compiled_self #header_ident))
         }
     }
     

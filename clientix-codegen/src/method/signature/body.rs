@@ -1,6 +1,8 @@
-use quote::quote;
-use syn::__private::TokenStream2;
-use syn::{Ident, Type};
+#![allow(dead_code)]
+
+use quote::{quote, ToTokens};
+use syn::__private::{Span, TokenStream2};
+use syn::{Field, Ident, PatType, Type};
 
 const OPTION_TYPE: &str = "Option";
 
@@ -8,12 +10,25 @@ const OPTION_TYPE: &str = "Option";
 pub struct BodyArgumentCompiler {
     ident: Ident,
     ty: Type,
+    is_field: bool
 }
 
 impl BodyArgumentCompiler {
+    
+    pub fn parse_argument(pat_type: PatType) -> Self {
+        Self {
+            ident: Ident::new(&format!("{}", &pat_type.pat.to_token_stream()), Span::call_site()),
+            ty: *pat_type.ty,
+            is_field: false
+        }
+    }
 
-    pub fn parse(ident: Ident, ty: Type) -> Self {
-        Self { ident, ty }
+    pub fn parse_field(field: Field) -> Self {
+        Self {
+            ident: field.ident.clone().unwrap(),
+            ty: field.ty,
+            is_field: true
+        }
     }
 
     pub fn name(&self) -> String {
