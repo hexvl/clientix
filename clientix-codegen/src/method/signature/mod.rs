@@ -1,13 +1,13 @@
-pub mod segment;
-pub mod query;
-pub mod body;
-pub mod header;
-pub mod args;
-pub mod output;
+pub(crate) mod segment;
+pub(crate) mod query;
+pub(crate) mod body;
+pub(crate) mod header;
+pub(crate) mod args;
+pub(crate) mod output;
 
 use quote::{quote, ToTokens};
-use syn::{FnArg, Meta, PatType, Signature};
-use syn::__private::TokenStream2;
+use syn::{FnArg, Ident, Meta, PatType, Signature};
+use syn::__private::{Span, TokenStream2};
 use clientix_core::core::headers::content_type::ContentType;
 use crate::method::signature::args::ArgsArgumentCompiler;
 use crate::method::signature::body::BodyArgumentCompiler;
@@ -16,6 +16,12 @@ use crate::method::signature::output::OutputCompiler;
 use crate::method::signature::query::QueryArgumentCompiler;
 use crate::method::signature::segment::SegmentArgumentCompiler;
 use crate::utils::throw_error;
+
+const SEGMENT_MACRO: &str = "segment";
+const QUERY_MACRO: &str = "query";
+const HEADER_MACRO: &str = "header";
+const ARGS_MACRO: &str = "args";
+const BODY_MACRO: &str = "body";
 
 #[derive(Clone, Debug)]
 pub struct SignatureCompiler {
@@ -85,35 +91,40 @@ impl SignatureCompiler {
     pub fn add(&mut self, pat_type: &mut PatType) {
         let mut not_processed_attrs = Vec::new();
 
-        pat_type.attrs.clone().into_iter().map(|attr_expr| match attr_expr.meta.clone() {
+        pat_type.attrs.clone().into_iter()
+            .map(|attr_expr| match attr_expr.meta.clone() {
             Meta::Path(value) => (value, TokenStream2::new(), attr_expr),
             Meta::List(value) => (value.path, value.tokens.to_token_stream(), attr_expr),
             Meta::NameValue(value) => (value.path, TokenStream2::new(), attr_expr),
-        }).for_each(|(path, attrs, attr_expr)| {
-            match path {
-                ref path if path.is_ident("segment") => {
-                    self.segments.push(SegmentArgumentCompiler::parse(pat_type.pat.to_token_stream(), attrs, self.dry_run));
-                },
-                ref path if path.is_ident("query") => {
-                    self.queries.push(QueryArgumentCompiler::parse(pat_type.pat.to_token_stream(), attrs, self.dry_run));
-                },
-                ref path if path.is_ident("header") => {
-                    self.headers.push(HeaderArgumentCompiler::parse(pat_type.pat.to_token_stream(), attrs, self.dry_run));
-                },
-                ref path if path.is_ident("args") => {
-                    self.args.push(ArgsArgumentCompiler::parse(pat_type.pat.to_token_stream()));
-                }
-                ref path if path.is_ident("body") => {
-                    match self.body {
-                        None => self.body = Some(BodyArgumentCompiler::parse(pat_type.pat.to_token_stream())),
-                        Some(_) => throw_error("multiple body arg", self.dry_run),
+        })
+            .for_each(|(path, attrs, attr_expr)| {
+                let ident = Ident::new(&format!("{}", &pat_type.pat.to_token_stream()), Span::call_site());
+                let ty = *pat_type.ty.clone();
+
+                match path {
+                    ref path if path.is_ident(SEGMENT_MACRO) => {
+                        self.segments.push(SegmentArgumentCompiler::parse(ident, ty, attrs, self.dry_run));
+                    },
+                    ref path if path.is_ident(QUERY_MACRO) => {
+                        self.queries.push(QueryArgumentCompiler::parse(ident, ty, attrs, self.dry_run));
+                    },
+                    ref path if path.is_ident(HEADER_MACRO) => {
+                        self.headers.push(HeaderArgumentCompiler::parse(ident, ty, attrs, self.dry_run));
+                    },
+                    ref path if path.is_ident(ARGS_MACRO) => {
+                        self.args.push(ArgsArgumentCompiler::parse(ident));
                     }
-                },
-                _ => {
-                    not_processed_attrs.push(attr_expr);
+                    ref path if path.is_ident(BODY_MACRO) => {
+                        match self.body {
+                            None => self.body = Some(BodyArgumentCompiler::parse(ident, ty)),
+                            Some(_) => throw_error("multiple body arg", self.dry_run),
+                        }
+                    },
+                    _ => {
+                        not_processed_attrs.push(attr_expr);
+                    }
                 }
-            }
-        });
+            });
 
         pat_type.attrs = not_processed_attrs;
     }
@@ -121,26 +132,28 @@ impl SignatureCompiler {
     pub fn compile_segments(&self, path: Option<&String>) -> TokenStream2 {
         if let Some(path) = path {
             if self.segments().is_empty() && self.args.is_empty() {
-                quote!(.path(#path))
+                quote!(let builder = builder.path(#path);)
             } else {
                 let mut stream = TokenStream2::from(quote! {
                     let mut arguments = std::collections::HashMap::new();
                 });
 
-                for args_variable in self.args.iter() {
-                    let args_segments = args_variable.compile_segments();
+                for args_argument in self.args.iter() {
+                    let args_segments = args_argument.compile_segments();
                     stream.extend(quote!(arguments.extend(#args_segments);));
                 }
 
-                for segment_variable in self.segments().iter() {
-                    stream.extend(segment_variable.compile());
+                for segment_argument in self.segments().iter() {
+                    let name = segment_argument.name();
+                    let value = segment_argument.value();
+                    stream.extend(quote!(arguments.insert(#name.to_string(), #value.to_string());));
                 }
 
                 stream.extend(quote! {
                     clientix::prelude::strfmt::strfmt(#path, &arguments).expect("failed to format header").as_str()
                 });
 
-                quote!(.path({#stream}))
+                quote!(let builder = builder.path({#stream});)
             }
         } else {
             quote!()
@@ -150,10 +163,18 @@ impl SignatureCompiler {
     pub fn compile_headers(&self) -> TokenStream2 {
         let mut stream = TokenStream2::new();
         if self.headers.is_empty() {
-            stream.extend(quote! {});
+            stream.extend(quote!());
         } else {
-            for header_variable in self.headers.iter() {
-                stream.extend(header_variable.compile());
+            for args_argument in self.args.iter() {
+                let headers = args_argument.compile_headers();
+                stream.extend(quote!(let builder = builder.headers(#headers);));
+            }
+
+            for header_argument in self.headers.iter() {
+                let name = header_argument.name();
+                let value = header_argument.value();
+                let sensitive = header_argument.sensitive();
+                stream.extend(quote!(let builder = builder.header(#name, #value.to_string().as_str(), #sensitive);));
             }
         }
 
@@ -161,31 +182,66 @@ impl SignatureCompiler {
     }
 
     pub fn compile_queries(&self) -> TokenStream2 {
+        let mut stream = TokenStream2::new();
         if self.queries.is_empty() {
-            quote! {}
+            stream.extend(quote!());
         } else {
-            let mut stream = TokenStream2::new();
-            for query_variable in self.queries.iter() {
-                stream.extend(query_variable.compile());
+            for arg_argument in self.args.iter() {
+                let queries = arg_argument.compile_queries();
+                stream.extend(quote!(let builder = builder.queries(#queries);));
             }
 
-            stream
+            for query_argument in self.queries.iter() {
+                let name = query_argument.name();
+                let value = query_argument.value();
+                stream.extend(quote!(let builder = builder.query(#name, #value.to_string().as_str());));
+            }
         }
+
+        stream
     }
 
     pub fn compile_body(&self, consumes: Option<ContentType>) -> TokenStream2 {
-        if let Some(body_variable) = &self.body {
-            body_variable.compile(consumes)
-        } else {
-            quote! {}
+        let content_type: String = match consumes {
+            Some(value) => value.to_string(),
+            None => ContentType::ApplicationJson.to_string()
+        };
+
+        for argument in self.args.iter() {
+            let body = argument.compile_body();
+            return quote! {
+                let builder = if let Some(body) = #body {
+                    builder.body(body, #content_type.to_string().try_into().unwrap())
+                } else {
+                    builder
+                };
+            }
         }
+
+        if let Some(body_argument) = &self.body {
+            let body = body_argument.value();
+            return quote! {
+                let builder = if let Some(body) = #body {
+                    builder.body(body, #content_type.to_string().try_into().unwrap())
+                } else {
+                    builder
+                };
+            }
+        }
+
+        quote! {}
     }
 
     pub fn compile_output(&self) -> TokenStream2 {
         if let Some(output) = &self.output {
-            output.compile()
+            let output = output.compile();
+
+            quote! {
+                builder.send()
+                    #output
+            }
         } else {
-            quote!()
+            quote!(builder.send();)
         }
     }
 

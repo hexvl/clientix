@@ -31,8 +31,10 @@ impl HeaderCompiler {
         if !segments.is_empty() {
             stream.extend(quote!(let mut arguments = std::collections::HashMap::new();));
 
-            for segment_variable in segments.iter() {
-                stream.extend(segment_variable.compile())
+            for segment_argument in segments.iter() {
+                let ident = segment_argument.name();
+                let value = segment_argument.value();
+                stream.extend(quote!(arguments.insert(#ident.to_string(), #value.to_string());))
             }
 
             stream.extend(quote!(clientix::prelude::strfmt::strfmt(#value, &arguments).expect("failed to format header").as_str()));

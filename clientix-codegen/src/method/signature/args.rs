@@ -1,30 +1,36 @@
 use quote::quote;
 use syn::__private::TokenStream2;
+use syn::Ident;
 
 #[derive(Clone, Debug)]
 pub struct ArgsArgumentCompiler {
-    tokens: TokenStream2
+    ident: Ident
 }
 
 impl ArgsArgumentCompiler {
 
-    pub fn parse(item: TokenStream2) -> Self {
-        Self { tokens: item }
+    pub fn parse(ident: Ident) -> Self {
+        Self { ident }
     }
 
     pub fn compile_segments(&self) -> TokenStream2 {
-        let tokens = &self.tokens;
-        quote!(#tokens.segments())
+        let args_ident = &self.ident;
+        quote!(#args_ident.segments())
     }
 
     pub fn compile_queries(&self) -> TokenStream2 {
-        let tokens = &self.tokens;
-        quote!(#tokens.queries())
+        let args_ident = &self.ident;
+        quote!(#args_ident.queries())
     }
 
     pub fn compile_headers(&self) -> TokenStream2 {
-        let tokens = &self.tokens;
-        quote!(#tokens.headers())
+        let args_ident = &self.ident;
+        quote!(#args_ident.headers())
     }
 
+    pub fn compile_body(&self) -> TokenStream2 {
+        let args_ident = &self.ident;
+        quote!(#args_ident.body())
+    }
+    
 }

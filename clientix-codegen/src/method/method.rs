@@ -136,26 +136,24 @@ impl MethodCompiler {
             pub #sig {
                 use clientix::client::request::ClientixRequestBuilder;
 
-                self.client
-                    #compiled_method
-                    #compiled_path
-                    #compiled_headers
-                    #compiled_queries
-                    #compiled_body
-                    .send()
-                    #compiled_result
+                #compiled_method
+                #compiled_path
+                #compiled_headers
+                #compiled_queries
+                #compiled_body
+                #compiled_result
             }
         }
     }
 
     fn compile_method(&self) -> TokenStream2 {
         TokenStream2::from(match *self.attributes.method() {
-            Method::GET => quote! {.get()},
-            Method::POST => quote! {.post()},
-            Method::PUT => quote! {.put()},
-            Method::DELETE => quote! {.delete()},
-            Method::HEAD => quote! {.head()},
-            Method::PATCH => quote! {.patch()},
+            Method::GET => quote!(let builder = self.client.get();),
+            Method::POST => quote!(let builder = self.client.post();),
+            Method::PUT => quote!(let builder = self.client.put();),
+            Method::DELETE => quote!(let builder = self.client.delete();),
+            Method::HEAD => quote!(let builder = self.client.head();),
+            Method::PATCH => quote!(let builder = self.client.patch();),
             _ => panic!("missing method type")
         })
     }

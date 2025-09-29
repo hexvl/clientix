@@ -1,4 +1,4 @@
-pub mod client;
-pub mod method;
-pub mod header;
-pub mod param;
+pub(crate) mod client;
+pub(crate) mod method;
+pub(crate) mod header;
+pub(crate) mod param;

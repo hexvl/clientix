@@ -3,6 +3,10 @@ use syn::__private::TokenStream2;
 use syn::parse::Parser;
 use crate::utils::throw_error;
 
+const NAME_ATTR: &str = "name";
+const VALUE_ATTR: &str = "value";
+const SENSITIVE_ATTR: &str = "sensitive";
+
 #[derive(Clone, Debug)]
 pub struct HeaderAttributes {
     name: Option<String>,
@@ -21,17 +25,17 @@ impl HeaderAttributes {
         
         let parser = syn::meta::parser(|meta| {
             match meta.path {
-                ref path if path.is_ident("name") => {
+                ref path if path.is_ident(NAME_ATTR) => {
                     attributes.name = Some(meta.value()?.parse::<LitStr>()?.value());
 
                     Ok(())
                 }
-                ref path if path.is_ident("value") => {
+                ref path if path.is_ident(VALUE_ATTR) => {
                     attributes.value = Some(meta.value()?.parse::<LitStr>()?.value());
 
                     Ok(())
                 }
-                ref path if path.is_ident("sensitive") => {
+                ref path if path.is_ident(SENSITIVE_ATTR) => {
                     attributes.sensitive = meta.value()?.parse::<LitBool>()?.value();
 
                     Ok(())
