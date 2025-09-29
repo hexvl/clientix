@@ -5,6 +5,10 @@ use clientix_core::core::headers::content_type::ContentType;
 use clientix_core::prelude::reqwest::Method;
 use crate::utils::throw_error;
 
+const PATH_ATTR: &str = "path";
+const CONSUMES_ATTR: &str = "consumes";
+const PRODUCES_ATTR: &str = "produces";
+
 #[derive(Clone, Debug)]
 pub struct MethodAttributes {
     method: Method,
@@ -24,12 +28,12 @@ impl MethodAttributes {
 
         let parser = syn::meta::parser(|meta| {
             match meta.path {
-                ref path if path.is_ident("path") => {
+                ref path if path.is_ident(PATH_ATTR) => {
                     attributes.path = Some(meta.value()?.parse::<LitStr>()?.value());
 
                     Ok(())
                 }
-                ref path if path.is_ident("consumes") => {
+                ref path if path.is_ident(CONSUMES_ATTR) => {
                     match meta.value()?.parse::<LitStr>()?.value().try_into() {
                         Ok(consumes) => attributes.consumes = Some(consumes),
                         Err(_) => throw_error("invalid content-type for consumes", dry_run)
@@ -37,7 +41,7 @@ impl MethodAttributes {
 
                     Ok(())
                 }
-                ref path if path.is_ident("produces") => {
+                ref path if path.is_ident(PRODUCES_ATTR) => {
                     match meta.value()?.parse::<LitStr>()?.value().try_into() {
                         Ok(produces) => attributes.produces = Some(produces),
                         Err(_) => throw_error("invalid content-type for produces", dry_run)

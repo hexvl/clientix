@@ -1,6 +1,6 @@
-mod method;
-mod header;
-mod signature;
+pub(crate) mod signature;
+pub(crate) mod method;
+pub(crate) mod header;
 
 pub use method::*;
 

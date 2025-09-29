@@ -10,9 +10,7 @@ pub struct RequestArgs {
     #[query]
     pub query_1: String,
     #[query]
-    pub query_2: String,
-    #[body]
-    pub body: String,
+    pub query_2: String
 }
 
 #[data_transfer]

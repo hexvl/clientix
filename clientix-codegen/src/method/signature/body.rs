@@ -1,26 +1,50 @@
 use quote::quote;
 use syn::__private::TokenStream2;
-use clientix_core::core::headers::content_type::ContentType;
+use syn::{Ident, Type};
+
+const OPTION_TYPE: &str = "Option";
 
 #[derive(Clone, Debug)]
 pub struct BodyArgumentCompiler {
-    tokens: Option<TokenStream2>
+    ident: Ident,
+    ty: Type,
 }
 
 impl BodyArgumentCompiler {
 
-    pub fn parse(item: TokenStream2) -> Self {
-        Self { tokens: Some(item) }
+    pub fn parse(ident: Ident, ty: Type) -> Self {
+        Self { ident, ty }
+    }
+
+    pub fn name(&self) -> String {
+        let body_ident = &self.ident;
+        let body_name = format!("{}", quote!(#body_ident));
+
+        body_name
     }
     
-    pub fn compile(&self, consumes: Option<ContentType>) -> TokenStream2 {
-        let content_type: String = match consumes {
-            Some(value) => value.to_string(),
-            None => ContentType::ApplicationJson.to_string()
-        };
-
-        let body_variable = self.tokens.clone().expect("missing segment attribute");
-        quote!(.body(#body_variable, #content_type.to_string().try_into().unwrap()))
+    pub fn ty(&self) -> Type {
+        self.ty.clone()
+    }
+    
+    pub fn value(&self) -> TokenStream2 {
+        let body_ident = &self.ident;
+        if self.is_option() {
+            quote!(#body_ident)
+        } else {
+            quote!(Some(#body_ident))
+        }
     }
 
+    fn is_option(&self) -> bool {
+        if let Type::Path(type_path) = self.ty() {
+            type_path.path.segments.last()
+                .map(|value| value.ident.to_string())
+                .map(|value| value == OPTION_TYPE)
+                .unwrap_or(false)
+        } else {
+            false
+        }
+    }
+    
 }

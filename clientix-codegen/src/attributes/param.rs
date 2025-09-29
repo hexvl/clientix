@@ -3,6 +3,9 @@ use syn::LitStr;
 use syn::parse::Parser;
 use crate::utils::throw_error;
 
+const NAME_ATTR: &str = "name";
+const VALUE_ATTR: &str = "value";
+
 #[derive(Clone, Debug)]
 pub struct ParamAttributes {
     name: Option<String>,
@@ -20,12 +23,12 @@ impl ParamAttributes {
 
         let parser = syn::meta::parser(|meta| {
             match meta.path {
-                ref path if path.is_ident("name") => {
+                ref path if path.is_ident(NAME_ATTR) => {
                     attributes.name = Some(meta.value()?.parse::<LitStr>()?.value());
 
                     Ok(())
                 }
-                ref path if path.is_ident("value") => {
+                ref path if path.is_ident(VALUE_ATTR) => {
                     attributes.value = Some(meta.value()?.parse::<LitStr>()?.value());
 
                     Ok(())

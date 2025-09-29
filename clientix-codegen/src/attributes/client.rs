@@ -2,6 +2,10 @@ use syn::__private::TokenStream2;
 use syn::{Ident, LitBool, LitStr};
 use syn::parse::Parser;
 
+const URL_ATTR: &str = "url";
+const PATH_ATTR: &str = "path";
+const ASYNC_ATTR: &str = "async";
+
 #[derive(Clone, Debug)]
 pub struct ClientAttributes {
     url: Option<String>,
@@ -20,15 +24,15 @@ impl ClientAttributes {
 
         let parser = syn::meta::parser(|meta| {
             match meta.path {
-                ref path if path.is_ident("url") => {
+                ref path if path.is_ident(URL_ATTR) => {
                     attributes.url = Some(meta.value()?.parse::<LitStr>()?.value());
                     Ok(())
                 },
-                ref path if path.is_ident("path") => {
+                ref path if path.is_ident(PATH_ATTR) => {
                     attributes.path = Some(meta.value()?.parse::<LitStr>()?.value());
                     Ok(())
                 }
-                ref path if path.is_ident("async") => {
+                ref path if path.is_ident(ASYNC_ATTR) => {
                     attributes.async_supported = meta.value()?.parse::<LitBool>()?.value();
                     Ok(())
                 }

@@ -5,14 +5,13 @@ mod attributes;
 mod derive;
 
 use proc_macro::TokenStream;
-use quote::{quote, ToTokens};
+use quote::quote;
 use syn::{parse_macro_input, DeriveInput, ItemStruct};
 use clientix_core::prelude::reqwest::Method;
 use crate::client::parse_client;
 use crate::method::parse_header;
 use crate::method::parse_method;
-use syn::parse::Parser;
-use crate::utils::throw_error;
+use crate::derive::request_args::RequestArgsCompiler;
 
 /**
 A procedural macro for building an HTTP client. It includes the following attributes:
@@ -192,65 +191,6 @@ pub fn request_args(_: TokenStream, item: TokenStream) -> TokenStream {
 #[proc_macro_derive(RequestArgs, attributes(segment, query, header, body))]
 pub fn request_args_derive(item: TokenStream) -> TokenStream {
     let derive_input = parse_macro_input!(item as DeriveInput);
-    let ident = &derive_input.ident;
-
-    let mut segments_stream = quote!(let mut arguments = std::collections::HashMap::new(););
-    let mut queries_stream = quote!(let mut arguments = std::collections::HashMap::new(););
-    let mut headers_stream = quote!(let mut arguments = std::collections::HashMap::new(););
-    let mut body_stream = quote!();
-    match derive_input.data {
-        syn::Data::Struct(data) => {
-            for field in &data.fields {
-                for attr in &field.attrs {
-                    match attr.path() {
-                        ref path if path.is_ident("segment") => {
-                            let segment_variable = field.ident.clone().unwrap();
-                            let segment_id = format!("{}", quote! {#segment_variable});
-
-                            segments_stream.extend(quote!(arguments.insert(#segment_id.to_string(), self.#segment_variable.to_string());));
-                        },
-                        ref path if path.is_ident("query") => {
-                            let query_variable = field.ident.clone().unwrap();
-                            let query_id = format!("{}", quote! {#query_variable});
-
-                            segments_stream.extend(quote!(arguments.insert(#query_id.to_string(), self.#query_variable.to_string());));
-                        }
-                        ref path if path.is_ident("header") => {
-                            let header_variable = field.ident.clone().unwrap();
-                            let header_id = format!("{}", quote! {#header_variable});
-
-                            segments_stream.extend(quote!(arguments.insert(#header_id.to_string(), self.#header_variable.to_string());));
-                        }
-                        ref path if path.is_ident("body") => {
-                            let body_variable = field.ident.clone().unwrap();
-                            body_stream.extend(quote!(self.#body_variable.to_string()));
-                        }
-                        _ => throw_error("unsupported attribute", false),
-                    }
-                }
-            }
-        },
-        _ => {}
-    }
-    segments_stream.extend(quote!(arguments));
-    queries_stream.extend(quote!(arguments));
-    headers_stream.extend(quote!(arguments));
-
-    TokenStream::from(quote! {
-        impl #ident {
-
-            pub fn segments(&self) -> std::collections::HashMap<String, String> {
-                #segments_stream
-            }
-
-            pub fn queries(&self) -> std::collections::HashMap<String, String> {
-                #queries_stream
-            }
-
-            pub fn headers(&self) -> std::collections::HashMap<String, String> {
-                #headers_stream
-            }
-
-        }
-    })
+    let request_args = RequestArgsCompiler::parse(derive_input).compile();
+    TokenStream::from(request_args)
 }

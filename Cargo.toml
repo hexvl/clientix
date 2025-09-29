@@ -5,7 +5,7 @@ resolver = "2"
 [workspace.package]
 version = "0.1.11"
 categories = ["web-programming", "web-programming::http-client", "development-tools::procedural-macro-helpers"]
-authors = ["Vladislav Ovchinnikov <vladovchinnikov950@gmail.com>"]
+authors = ["Vladislav Ovchinnikov <vo@xslab.ltd>"]
 edition = "2021"
 description = "Library for building HTTP clients and requests declaratively with procedural macros - no need to write complex imperative or functional logic."
 homepage = "https://github.com/hexvl/clientix"
