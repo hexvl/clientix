@@ -1,3 +1,0 @@
-include:
-  - project: 'devops/deploy'
-    file: '/gitlab/pipelines/rust/lib.gitlab-ci.yml'
