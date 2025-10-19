@@ -86,7 +86,7 @@ checksum = "2fd1289c04a9ea8cb22300a459a72a385d7c73d3259e2ed7dcb2af674838cfa9"
 
 [[package]]
 name = "clientix"
-version = "0.1.11"
+version = "0.2.0"
 dependencies = [
  "clientix-codegen",
  "clientix-core",
@@ -94,7 +94,7 @@ dependencies = [
 
 [[package]]
 name = "clientix-codegen"
-version = "0.1.11"
+version = "0.2.0"
 dependencies = [
  "clientix-core",
  "quote",
@@ -103,7 +103,7 @@ dependencies = [
 
 [[package]]
 name = "clientix-core"
-version = "0.1.11"
+version = "0.2.0"
 dependencies = [
  "base64",
  "bytes",
@@ -122,7 +122,7 @@ dependencies = [
 
 [[package]]
 name = "clientix-example"
-version = "0.1.11"
+version = "0.2.0"
 dependencies = [
  "clientix",
  "tokio",
