@@ -22,7 +22,7 @@ pub trait ClientixRequestBuilder {
     fn config(&mut self) -> &mut RequestConfig;
     
     fn result(&mut self) -> &mut ClientixResult<()>;
-    
+
     fn path(mut self, path: &str) -> Self where Self: Sized {
         self.config().set_path(path);
         self
@@ -41,14 +41,14 @@ pub trait ClientixRequestBuilder {
         self
     }
 
-    fn header(mut self, key: &str, value: &str) -> Self where Self: Sized {
-        self.config().set_header(key, value, false);
+    fn header(mut self, key: &str, value: &str, sensitive: bool) -> Self where Self: Sized {
+        self.config().set_header(key, value, sensitive);
         self
     }
 
     fn headers(mut self, headers: HashMap<String, String>) -> Self where Self: Sized {
         for (key, value) in headers {
-            self = self.header(key.as_str(), value.as_str());
+            self = self.header(key.as_str(), value.as_str(), false);
         }
 
         self

@@ -13,9 +13,13 @@ keywords.workspace = true
 name = "clientix-codegen"
 
 [dependencies]
+clientix-core = { workspace = true, features = ["std"] }
 quote = "1.0.40"
-syn = { version = "2.0.106", features = ["full"] }
-clientix-core = { workspace = true }
+syn = "2.0.106"
 
 [lib]
 proc-macro = true
+
+[features]
+default = ["std"]
+std = ["syn/full"]
